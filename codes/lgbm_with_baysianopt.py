@@ -81,7 +81,7 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     # make categorical -> num set
     categorical_features = df_train.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
     for i in categorical_features.index:
-        cate = app_train[["TARGET", i]].groupby(i).mean()
+        cate = df_train[["TARGET", i]].groupby(i).mean()
         df[["TARGET", i]] = df[["TARGET", i]].replace(cate['TARGET'].to_dict())
 
     del df_train, df_test
