@@ -652,7 +652,7 @@ scores = pd.DataFrame(index = scores_index)
 
 
 lgbm_params = {
-            'nthread': 4,
+            'nthread': 8,
             'n_estimators': 10000,
             'learning_rate': .02,
             'num_leaves': 34,
