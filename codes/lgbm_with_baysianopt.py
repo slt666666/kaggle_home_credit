@@ -82,7 +82,7 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     categorical_features = df_train.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
     for i in categorical_features.index:
         cate = df_train[["TARGET", i]].groupby(i).mean()
-        df[["TARGET", i]] = df[["TARGET", i]].replace(cate['TARGET'].to_dict())
+        df[i + "_MEAN_NUM"] = df[i].replace(cate['TARGET'].to_dict())
 
     del df_train, df_test
     gc.collect()
@@ -100,12 +100,12 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     df.loc[df['AMT_REQ_CREDIT_BUREAU_QRT'] > 10, 'AMT_REQ_CREDIT_BUREAU_QRT'] = np.nan
     df.loc[df['OBS_30_CNT_SOCIAL_CIRCLE'] > 40, 'OBS_30_CNT_SOCIAL_CIRCLE'] = np.nan
 
-    # # Categorical features with Binary encode (0 or 1; two categories)
-    # for bin_feature in ['CODE_GENDER', 'FLAG_OWN_CAR', 'FLAG_OWN_REALTY']:
-    #     df[bin_feature], _ = pd.factorize(df[bin_feature])
-    #
-    # # Categorical features with One-Hot encode
-    # df, _ = one_hot_encoder(df, nan_as_category)
+    # Categorical features with Binary encode (0 or 1; two categories)
+    for bin_feature in ['CODE_GENDER', 'FLAG_OWN_CAR', 'FLAG_OWN_REALTY']:
+        df[bin_feature], _ = pd.factorize(df[bin_feature])
+
+    # Categorical features with One-Hot encode
+    df, _ = one_hot_encoder(df, nan_as_category)
 
     # Some new features
     df['app missing'] = df.isnull().sum(axis = 1).values
