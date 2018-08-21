@@ -13,7 +13,7 @@ from sklearn.model_selection import KFold, StratifiedKFold
 from lightgbm import LGBMClassifier
 
 from scipy.stats import ranksums
-from bayes_opt import BayesianOptimization
+import BayesianOptimization
 
 
 def reduce_mem_usage(data, verbose = True):
