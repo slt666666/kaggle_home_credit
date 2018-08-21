@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import seaborn as sns
 import gc
 import time
@@ -706,7 +706,7 @@ def lgbm_evaluate(**params):
 
 params = {'colsample_bytree': (0.8, 1),
           'learning_rate': (.01, .02),
-          'num_leaves': (33, 35), 
+          'num_leaves': (33, 35),
           'subsample': (0.8, 1),
           'max_depth': (7, 9),
           'reg_alpha': (.03, .05),
