@@ -72,13 +72,20 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     df_train = pd.read_csv(file_path + 'application_train.csv')
     df_test = pd.read_csv(file_path + 'application_test.csv')
     df = pd.concat([df_train, df_test], axis = 0, ignore_index = True)
-    del df_train, df_test
-    gc.collect()
 
     # Remove some rows with values not present in test set
     df.drop(df[df['CODE_GENDER'] == 'XNA'].index, inplace = True)
     df.drop(df[df['NAME_INCOME_TYPE'] == 'Maternity leave'].index, inplace = True)
     df.drop(df[df['NAME_FAMILY_STATUS'] == 'Unknown'].index, inplace = True)
+
+    # make categorical -> num set
+    categorical_features = df_train.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
+    for i in categorical_features.index:
+        cate = app_train[["TARGET", i]].groupby(i).mean()
+        df[["TARGET", i]] = df[["TARGET", i]].replace(cate['TARGET'].to_dict())
+
+    del df_train, df_test
+    gc.collect()
 
     # Remove some empty features
     df.drop(['FLAG_DOCUMENT_2', 'FLAG_DOCUMENT_10', 'FLAG_DOCUMENT_12', 'FLAG_DOCUMENT_13', 'FLAG_DOCUMENT_14',
@@ -93,12 +100,12 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     df.loc[df['AMT_REQ_CREDIT_BUREAU_QRT'] > 10, 'AMT_REQ_CREDIT_BUREAU_QRT'] = np.nan
     df.loc[df['OBS_30_CNT_SOCIAL_CIRCLE'] > 40, 'OBS_30_CNT_SOCIAL_CIRCLE'] = np.nan
 
-    # Categorical features with Binary encode (0 or 1; two categories)
-    for bin_feature in ['CODE_GENDER', 'FLAG_OWN_CAR', 'FLAG_OWN_REALTY']:
-        df[bin_feature], _ = pd.factorize(df[bin_feature])
-
-    # Categorical features with One-Hot encode
-    df, _ = one_hot_encoder(df, nan_as_category)
+    # # Categorical features with Binary encode (0 or 1; two categories)
+    # for bin_feature in ['CODE_GENDER', 'FLAG_OWN_CAR', 'FLAG_OWN_REALTY']:
+    #     df[bin_feature], _ = pd.factorize(df[bin_feature])
+    #
+    # # Categorical features with One-Hot encode
+    # df, _ = one_hot_encoder(df, nan_as_category)
 
     # Some new features
     df['app missing'] = df.isnull().sum(axis = 1).values
