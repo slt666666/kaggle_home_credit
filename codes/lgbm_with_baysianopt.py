@@ -539,6 +539,7 @@ def clean_data(data):
 
     # Get features by PCA
     PCA_base_features = data.drop('TARGET', axis = 1)
+    PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
     pca = PCA()
     pca.fit(PCA_base_features)
     transformed = pca.fit_transform(features)
