@@ -542,7 +542,7 @@ def clean_data(data):
     PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
     pca = PCA()
     pca.fit(PCA_base_features)
-    transformed = pca.fit_transform(features)
+    transformed = pca.fit_transform(PCA_base_features)
     top10_PCA_component = transformed[:, 0:10]
     print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:10]))
 
