@@ -473,219 +473,220 @@ def aggregate(file_path = file_path):
 
 
 df = aggregate()
+df.to_csv("all_data_features.csv")
 
-
-def corr_feature_with_target(feature, target):
-    c0 = feature[target == 0].dropna()
-    c1 = feature[target == 1].dropna()
-
-    if set(feature.unique()) == set([0, 1]):
-        diff = abs(c0.mean(axis = 0) - c1.mean(axis = 0))
-    else:
-        diff = abs(c0.median(axis = 0) - c1.median(axis = 0))
-
-    p = ranksums(c0, c1)[1] if ((len(c0) >= 20) & (len(c1) >= 20)) else 2
-
-    return [diff, p]
-
-
-def clean_data(data):
-    warnings.simplefilter(action = 'ignore')
-
-    # Removing empty features
-    nun = data.nunique()
-    empty = list(nun[nun <= 1].index)
-
-    data.drop(empty, axis = 1, inplace = True)
-    print('After removing empty features there are {0:d} features'.format(data.shape[1]))
-
-    # Removing features with the same distribution on 0 and 1 classes
-    corr = pd.DataFrame(index = ['diff', 'p'])
-    ind = data[data['TARGET'].notnull()].index
-
-    for c in data.columns.drop('TARGET'):
-        corr[c] = corr_feature_with_target(data.loc[ind, c], data.loc[ind, 'TARGET'])
-
-    corr = corr.T
-    corr['diff_norm'] = abs(corr['diff'] / data.mean(axis = 0))
-
-    to_del_1 = corr[((corr['diff'] == 0) & (corr['p'] > .05))].index
-    to_del_2 = corr[((corr['diff_norm'] < .5) & (corr['p'] > .05))].drop(to_del_1).index
-    to_del = list(to_del_1) + list(to_del_2)
-    if 'SK_ID_CURR' in to_del:
-        to_del.remove('SK_ID_CURR')
-
-    data.drop(to_del, axis = 1, inplace = True)
-    print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
-
-    # # Removing features with not the same distribution on train and test datasets
-    # corr_test = pd.DataFrame(index = ['diff', 'p'])
-    # target = data['TARGET'].notnull().astype(int)
-    # 
-    # for c in data.columns.drop('TARGET'):
-    #     corr_test[c] = corr_feature_with_target(data[c], target)
-    #
-    # corr_test = corr_test.T
-    # corr_test['diff_norm'] = abs(corr_test['diff'] / data.mean(axis = 0))
-    #
-    # bad_features = corr_test[((corr_test['p'] < .05) & (corr_test['diff_norm'] > 1))].index
-    # bad_features = corr.loc[bad_features][corr['diff_norm'] == 0].index
-    #
-    # data.drop(bad_features, axis = 1, inplace = True)
-    # print('After removing features with not the same distribution on train and test datasets there are {0:d} features'.format(data.shape[1]))
-    #
-    # del corr, corr_test
-    # gc.collect()
-
-    # Get features by PCA
-    PCA_base_features = data.drop('TARGET', axis = 1)
-    PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
-    pca = PCA()
-    pca.fit(PCA_base_features)
-    transformed = pca.fit_transform(PCA_base_features)
-    top10_PCA_component = transformed[:, 0:10]
-    print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:10]))
-
-    # Removing features not interesting for classifier
-    clf = LGBMClassifier(random_state = 0)
-    train_index = data[data['TARGET'].notnull()].index
-    train_columns = data.drop('TARGET', axis = 1).columns
-
-    score = 1
-    new_columns = []
-    while score > .7:
-        train_columns = train_columns.drop(new_columns)
-        clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
-        f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-        score = roc_auc_score(data.loc[train_index, 'TARGET'],
-                              clf.predict_proba(data.loc[train_index, train_columns])[:, 1])
-        new_columns = f_imp[f_imp > 0].index
-
-    data.drop(train_columns, axis = 1, inplace = True)
-    print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
-
-    for i in range(10):
-        data["PCA_" + str(i)] = top10_PCA_component[:, i]
-
-    return data
-
-
-df = clean_data(df)
-
-
-def cv_scores(df, num_folds, params, stratified = False, verbose = -1,
-              save_train_prediction = False, train_prediction_file_name = 'train_prediction.csv',
-              save_test_prediction = True, test_prediction_file_name = 'test_prediction.csv'):
-    warnings.simplefilter('ignore')
-
-    clf = LGBMClassifier(**params)
-
-    # Divide in training/validation and test data
-    train_df = df[df['TARGET'].notnull()]
-    test_df = df[df['TARGET'].isnull()]
-    print("Starting LightGBM. Train shape: {}, test shape: {}".format(train_df.shape, test_df.shape))
-
-    # Cross validation model
-    if stratified:
-        folds = StratifiedKFold(n_splits = num_folds, shuffle = True, random_state = 1001)
-    else:
-        folds = KFold(n_splits = num_folds, shuffle = True, random_state = 1001)
-
-    # Create arrays and dataframes to store results
-    train_pred = np.zeros(train_df.shape[0])
-    train_pred_proba = np.zeros(train_df.shape[0])
-
-    test_pred = np.zeros(train_df.shape[0])
-    test_pred_proba = np.zeros(train_df.shape[0])
-
-    prediction = np.zeros(test_df.shape[0])
-
-    feats = [f for f in train_df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
-
-    df_feature_importance = pd.DataFrame(index = feats)
-
-    for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_df[feats], train_df['TARGET'])):
-        print('Fold', n_fold, 'started at', time.ctime())
-        train_x, train_y = train_df[feats].iloc[train_idx], train_df['TARGET'].iloc[train_idx]
-        valid_x, valid_y = train_df[feats].iloc[valid_idx], train_df['TARGET'].iloc[valid_idx]
-
-        clf.fit(train_x, train_y,
-                eval_set = [(train_x, train_y), (valid_x, valid_y)], eval_metric = 'auc',
-                verbose = verbose, early_stopping_rounds = 200)
-
-        train_pred[train_idx] = clf.predict(train_x, num_iteration = clf.best_iteration_)
-        train_pred_proba[train_idx] = clf.predict_proba(train_x, num_iteration = clf.best_iteration_)[:, 1]
-        test_pred[valid_idx] = clf.predict(valid_x, num_iteration = clf.best_iteration_)
-        test_pred_proba[valid_idx] = clf.predict_proba(valid_x, num_iteration = clf.best_iteration_)[:, 1]
-
-        prediction += \
-                clf.predict_proba(test_df[feats], num_iteration = clf.best_iteration_)[:, 1] / folds.n_splits
-
-        df_feature_importance[n_fold] = pd.Series(clf.feature_importances_, index = feats)
-
-        print('Fold %2d AUC : %.6f' % (n_fold, roc_auc_score(valid_y, test_pred_proba[valid_idx])))
-        del train_x, train_y, valid_x, valid_y
-        gc.collect()
-
-    roc_auc_train = roc_auc_score(train_df['TARGET'], train_pred_proba)
-    precision_train = precision_score(train_df['TARGET'], train_pred, average = None)
-    recall_train = recall_score(train_df['TARGET'], train_pred, average = None)
-
-    roc_auc_test = roc_auc_score(train_df['TARGET'], test_pred_proba)
-    precision_test = precision_score(train_df['TARGET'], test_pred, average = None)
-    recall_test = recall_score(train_df['TARGET'], test_pred, average = None)
-
-    print('Full AUC score %.6f' % roc_auc_test)
-
-    df_feature_importance.fillna(0, inplace = True)
-    df_feature_importance['mean'] = df_feature_importance.mean(axis = 1)
-
-    # Write prediction files
-    if save_train_prediction:
-        df_prediction = train_df[['SK_ID_CURR', 'TARGET']]
-        df_prediction['Prediction'] = test_pred_proba
-        df_prediction.to_csv(train_prediction_file_name, index = False)
-        del df_prediction
-        gc.collect()
-
-    if save_test_prediction:
-        df_prediction = test_df[['SK_ID_CURR']]
-        df_prediction['TARGET'] = prediction
-        df_prediction.to_csv(test_prediction_file_name, index = False)
-        del df_prediction
-        gc.collect()
-
-    return df_feature_importance, \
-           [roc_auc_train, roc_auc_test,
-            precision_train[0], precision_test[0], precision_train[1], precision_test[1],
-            recall_train[0], recall_test[0], recall_train[1], recall_test[1], 0]
-
-scores_index = [
-    'roc_auc_train', 'roc_auc_test',
-    'precision_train_0', 'precision_test_0',
-    'precision_train_1', 'precision_test_1',
-    'recall_train_0', 'recall_test_0',
-    'recall_train_1', 'recall_test_1',
-    'LB'
-]
-
-scores = pd.DataFrame(index = scores_index)
-
-
-lgbm_params = {
-            'nthread': 8,
-            'n_estimators': 10000,
-            'learning_rate': .02,
-            'num_leaves': 34,
-            'colsample_bytree': .9497036,
-            'subsample': .8715623,
-            'max_depth': 8,
-            'reg_alpha': .041545473,
-            'reg_lambda': .0735294,
-            'min_split_gain': .0222415,
-            'min_child_weight': 39.3259775,
-            'silent': -1,
-            'verbose': -1
-}
-
-feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_name = 'prediction_0.csv')
+#
+# def corr_feature_with_target(feature, target):
+#     c0 = feature[target == 0].dropna()
+#     c1 = feature[target == 1].dropna()
+#
+#     if set(feature.unique()) == set([0, 1]):
+#         diff = abs(c0.mean(axis = 0) - c1.mean(axis = 0))
+#     else:
+#         diff = abs(c0.median(axis = 0) - c1.median(axis = 0))
+#
+#     p = ranksums(c0, c1)[1] if ((len(c0) >= 20) & (len(c1) >= 20)) else 2
+#
+#     return [diff, p]
+#
+#
+# def clean_data(data):
+#     warnings.simplefilter(action = 'ignore')
+#
+#     # Removing empty features
+#     nun = data.nunique()
+#     empty = list(nun[nun <= 1].index)
+#
+#     data.drop(empty, axis = 1, inplace = True)
+#     print('After removing empty features there are {0:d} features'.format(data.shape[1]))
+#
+#     # Removing features with the same distribution on 0 and 1 classes
+#     corr = pd.DataFrame(index = ['diff', 'p'])
+#     ind = data[data['TARGET'].notnull()].index
+#
+#     for c in data.columns.drop('TARGET'):
+#         corr[c] = corr_feature_with_target(data.loc[ind, c], data.loc[ind, 'TARGET'])
+#
+#     corr = corr.T
+#     corr['diff_norm'] = abs(corr['diff'] / data.mean(axis = 0))
+#
+#     to_del_1 = corr[((corr['diff'] == 0) & (corr['p'] > .05))].index
+#     to_del_2 = corr[((corr['diff_norm'] < .5) & (corr['p'] > .05))].drop(to_del_1).index
+#     to_del = list(to_del_1) + list(to_del_2)
+#     if 'SK_ID_CURR' in to_del:
+#         to_del.remove('SK_ID_CURR')
+#
+#     data.drop(to_del, axis = 1, inplace = True)
+#     print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
+#
+#     # Removing features with not the same distribution on train and test datasets
+#     corr_test = pd.DataFrame(index = ['diff', 'p'])
+#     target = data['TARGET'].notnull().astype(int)
+#
+#     for c in data.columns.drop('TARGET'):
+#         corr_test[c] = corr_feature_with_target(data[c], target)
+#
+#     corr_test = corr_test.T
+#     corr_test['diff_norm'] = abs(corr_test['diff'] / data.mean(axis = 0))
+#
+#     bad_features = corr_test[((corr_test['p'] < .05) & (corr_test['diff_norm'] > 1))].index
+#     bad_features = corr.loc[bad_features][corr['diff_norm'] == 0].index
+#
+#     data.drop(bad_features, axis = 1, inplace = True)
+#     print('After removing features with not the same distribution on train and test datasets there are {0:d} features'.format(data.shape[1]))
+#
+#     del corr, corr_test
+#     gc.collect()
+#
+#     # Get features by PCA
+#     PCA_base_features = data.drop('TARGET', axis = 1)
+#     PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
+#     pca = PCA()
+#     pca.fit(PCA_base_features)
+#     transformed = pca.fit_transform(PCA_base_features)
+#     top10_PCA_component = transformed[:, 0:10]
+#     print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:10]))
+#
+#     # Removing features not interesting for classifier
+#     clf = LGBMClassifier(random_state = 0)
+#     train_index = data[data['TARGET'].notnull()].index
+#     train_columns = data.drop('TARGET', axis = 1).columns
+#
+#     score = 1
+#     new_columns = []
+#     while score > .7:
+#         train_columns = train_columns.drop(new_columns)
+#         clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
+#         f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+#         score = roc_auc_score(data.loc[train_index, 'TARGET'],
+#                               clf.predict_proba(data.loc[train_index, train_columns])[:, 1])
+#         new_columns = f_imp[f_imp > 0].index
+#
+#     data.drop(train_columns, axis = 1, inplace = True)
+#     print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
+#
+#     for i in range(10):
+#         data["PCA_" + str(i)] = top10_PCA_component[:, i]
+#
+#     return data
+#
+#
+# df = clean_data(df)
+#
+#
+# def cv_scores(df, num_folds, params, stratified = False, verbose = -1,
+#               save_train_prediction = False, train_prediction_file_name = 'train_prediction.csv',
+#               save_test_prediction = True, test_prediction_file_name = 'test_prediction.csv'):
+#     warnings.simplefilter('ignore')
+#
+#     clf = LGBMClassifier(**params)
+#
+#     # Divide in training/validation and test data
+#     train_df = df[df['TARGET'].notnull()]
+#     test_df = df[df['TARGET'].isnull()]
+#     print("Starting LightGBM. Train shape: {}, test shape: {}".format(train_df.shape, test_df.shape))
+#
+#     # Cross validation model
+#     if stratified:
+#         folds = StratifiedKFold(n_splits = num_folds, shuffle = True, random_state = 1001)
+#     else:
+#         folds = KFold(n_splits = num_folds, shuffle = True, random_state = 1001)
+#
+#     # Create arrays and dataframes to store results
+#     train_pred = np.zeros(train_df.shape[0])
+#     train_pred_proba = np.zeros(train_df.shape[0])
+#
+#     test_pred = np.zeros(train_df.shape[0])
+#     test_pred_proba = np.zeros(train_df.shape[0])
+#
+#     prediction = np.zeros(test_df.shape[0])
+#
+#     feats = [f for f in train_df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
+#
+#     df_feature_importance = pd.DataFrame(index = feats)
+#
+#     for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_df[feats], train_df['TARGET'])):
+#         print('Fold', n_fold, 'started at', time.ctime())
+#         train_x, train_y = train_df[feats].iloc[train_idx], train_df['TARGET'].iloc[train_idx]
+#         valid_x, valid_y = train_df[feats].iloc[valid_idx], train_df['TARGET'].iloc[valid_idx]
+#
+#         clf.fit(train_x, train_y,
+#                 eval_set = [(train_x, train_y), (valid_x, valid_y)], eval_metric = 'auc',
+#                 verbose = verbose, early_stopping_rounds = 200)
+#
+#         train_pred[train_idx] = clf.predict(train_x, num_iteration = clf.best_iteration_)
+#         train_pred_proba[train_idx] = clf.predict_proba(train_x, num_iteration = clf.best_iteration_)[:, 1]
+#         test_pred[valid_idx] = clf.predict(valid_x, num_iteration = clf.best_iteration_)
+#         test_pred_proba[valid_idx] = clf.predict_proba(valid_x, num_iteration = clf.best_iteration_)[:, 1]
+#
+#         prediction += \
+#                 clf.predict_proba(test_df[feats], num_iteration = clf.best_iteration_)[:, 1] / folds.n_splits
+#
+#         df_feature_importance[n_fold] = pd.Series(clf.feature_importances_, index = feats)
+#
+#         print('Fold %2d AUC : %.6f' % (n_fold, roc_auc_score(valid_y, test_pred_proba[valid_idx])))
+#         del train_x, train_y, valid_x, valid_y
+#         gc.collect()
+#
+#     roc_auc_train = roc_auc_score(train_df['TARGET'], train_pred_proba)
+#     precision_train = precision_score(train_df['TARGET'], train_pred, average = None)
+#     recall_train = recall_score(train_df['TARGET'], train_pred, average = None)
+#
+#     roc_auc_test = roc_auc_score(train_df['TARGET'], test_pred_proba)
+#     precision_test = precision_score(train_df['TARGET'], test_pred, average = None)
+#     recall_test = recall_score(train_df['TARGET'], test_pred, average = None)
+#
+#     print('Full AUC score %.6f' % roc_auc_test)
+#
+#     df_feature_importance.fillna(0, inplace = True)
+#     df_feature_importance['mean'] = df_feature_importance.mean(axis = 1)
+#
+#     # Write prediction files
+#     if save_train_prediction:
+#         df_prediction = train_df[['SK_ID_CURR', 'TARGET']]
+#         df_prediction['Prediction'] = test_pred_proba
+#         df_prediction.to_csv(train_prediction_file_name, index = False)
+#         del df_prediction
+#         gc.collect()
+#
+#     if save_test_prediction:
+#         df_prediction = test_df[['SK_ID_CURR']]
+#         df_prediction['TARGET'] = prediction
+#         df_prediction.to_csv(test_prediction_file_name, index = False)
+#         del df_prediction
+#         gc.collect()
+#
+#     return df_feature_importance, \
+#            [roc_auc_train, roc_auc_test,
+#             precision_train[0], precision_test[0], precision_train[1], precision_test[1],
+#             recall_train[0], recall_test[0], recall_train[1], recall_test[1], 0]
+#
+# scores_index = [
+#     'roc_auc_train', 'roc_auc_test',
+#     'precision_train_0', 'precision_test_0',
+#     'precision_train_1', 'precision_test_1',
+#     'recall_train_0', 'recall_test_0',
+#     'recall_train_1', 'recall_test_1',
+#     'LB'
+# ]
+#
+# scores = pd.DataFrame(index = scores_index)
+#
+#
+# lgbm_params = {
+#             'nthread': 8,
+#             'n_estimators': 10000,
+#             'learning_rate': .02,
+#             'num_leaves': 34,
+#             'colsample_bytree': .9497036,
+#             'subsample': .8715623,
+#             'max_depth': 8,
+#             'reg_alpha': .041545473,
+#             'reg_lambda': .0735294,
+#             'min_split_gain': .0222415,
+#             'min_child_weight': 39.3259775,
+#             'silent': -1,
+#             'verbose': -1
+# }
+#
+# feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_name = 'prediction_0.csv')
