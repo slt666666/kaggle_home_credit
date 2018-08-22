@@ -501,7 +501,7 @@ def clean_data(data):
     print('After removing empty features there are {0:d} features'.format(data.shape[1]))
 
     # convert num -> log for DAYS related features
-    for col in df_prev.columns:
+    for col in data.columns:
         if 'DAYS' in col:
             try:
                 print(col + " change to log")
