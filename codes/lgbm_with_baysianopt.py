@@ -535,7 +535,6 @@ def clean_data(data):
     print('After removing features with not the same distribution on train and test datasets there are {0:d} features'.format(data.shape[1]))
 
     del corr, corr_test
-    del corr
     gc.collect()
 
     # Get features by PCA
