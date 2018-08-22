@@ -723,16 +723,16 @@ def lgbm_evaluate(**params):
     return roc_auc_score(train_df['TARGET'], test_pred_proba)
 
 params = {'colsample_bytree': (0.8, 1),
-          'learning_rate': (.01, .03),
-          'num_leaves': (32, 64),
+          'learning_rate': (.01, .02),
+          'num_leaves': (32, 40),
           'subsample': (0.8, 1),
-          'max_depth': (7, 20),
-          'reg_alpha': (.01, .1),
+          'max_depth': (7, 9),
+          'reg_alpha': (.02, .06),
           'reg_lambda': (.06, .08),
           'min_split_gain': (.01, .03),
           'min_child_weight': (38, 40)}
 bo = BayesianOptimization(lgbm_evaluate, params)
-bo.maximize(init_points = 5, n_iter = 5)
+bo.maximize(init_points = 5, n_iter = 10)
 best_params = bo.res['max']['max_params']
 best_params['num_leaves'] = int(best_params['num_leaves'])
 best_params['max_depth'] = int(best_params['max_depth'])
