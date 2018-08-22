@@ -473,7 +473,7 @@ def aggregate(file_path = file_path):
 
 
 # df = aggregate()
-df = pd.read_csv("all_data_features.csv")
+df = pd.read_csv("all_data_features.csv", index_col=0)
 
 def corr_feature_with_target(feature, target):
     c0 = feature[target == 0].dropna()
