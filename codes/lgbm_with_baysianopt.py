@@ -518,24 +518,24 @@ def clean_data(data):
     data.drop(to_del, axis = 1, inplace = True)
     print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
 
-    # Removing features with not the same distribution on train and test datasets
-    corr_test = pd.DataFrame(index = ['diff', 'p'])
-    target = data['TARGET'].notnull().astype(int)
-
-    for c in data.columns.drop('TARGET'):
-        corr_test[c] = corr_feature_with_target(data[c], target)
-
-    corr_test = corr_test.T
-    corr_test['diff_norm'] = abs(corr_test['diff'] / data.mean(axis = 0))
-
-    bad_features = corr_test[((corr_test['p'] < .05) & (corr_test['diff_norm'] > 1))].index
-    bad_features = corr.loc[bad_features][corr['diff_norm'] == 0].index
-
-    data.drop(bad_features, axis = 1, inplace = True)
-    print('After removing features with not the same distribution on train and test datasets there are {0:d} features'.format(data.shape[1]))
-
-    del corr, corr_test
-    gc.collect()
+    # # Removing features with not the same distribution on train and test datasets
+    # corr_test = pd.DataFrame(index = ['diff', 'p'])
+    # target = data['TARGET'].notnull().astype(int)
+    # 
+    # for c in data.columns.drop('TARGET'):
+    #     corr_test[c] = corr_feature_with_target(data[c], target)
+    #
+    # corr_test = corr_test.T
+    # corr_test['diff_norm'] = abs(corr_test['diff'] / data.mean(axis = 0))
+    #
+    # bad_features = corr_test[((corr_test['p'] < .05) & (corr_test['diff_norm'] > 1))].index
+    # bad_features = corr.loc[bad_features][corr['diff_norm'] == 0].index
+    #
+    # data.drop(bad_features, axis = 1, inplace = True)
+    # print('After removing features with not the same distribution on train and test datasets there are {0:d} features'.format(data.shape[1]))
+    #
+    # del corr, corr_test
+    # gc.collect()
 
     # Get features by PCA
     PCA_base_features = data.drop('TARGET', axis = 1)
