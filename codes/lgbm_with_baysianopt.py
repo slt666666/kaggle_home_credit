@@ -553,7 +553,7 @@ def clean_data(data):
 
     score = 1
     new_columns = []
-    while score > .75:
+    while score > .8:
         train_columns = train_columns.drop(new_columns)
         clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
         f_imp = pd.Series(clf.feature_importances_, index = train_columns)
@@ -673,7 +673,7 @@ scores = pd.DataFrame(index = scores_index)
 
 
 lgbm_params = {
-            'nthread': 8,
+            'nthread': 32,
             'n_estimators': 10000,
             'learning_rate': .02,
             'num_leaves': 34,
@@ -696,7 +696,7 @@ feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_na
 #     params['num_leaves'] = int(params['num_leaves'])
 #     params['max_depth'] = int(params['max_depth'])
 #
-#     clf = LGBMClassifier(**params, n_estimators = 10000, nthread = 8)
+#     clf = LGBMClassifier(**params, n_estimators = 10000, nthread = 32)
 #
 #     train_df = df[df['TARGET'].notnull()]
 #     test_df = df[df['TARGET'].isnull()]
