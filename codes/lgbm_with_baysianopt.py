@@ -499,20 +499,6 @@ def clean_data(data):
     data.drop(empty, axis = 1, inplace = True)
     print('After removing empty features there are {0:d} features'.format(data.shape[1]))
 
-    # convert num -> log for DAYS related features
-    for col in data.columns:
-        if 'DAYS' in col:
-            try:
-                print(col + " change to log")
-                data[col] = np.log(data[col])
-            except:
-                try:
-                    print(col + " change to -1 & log")
-                    data[col] = np.log(-data[col])
-                except:
-                    print(col + " can't convert")
-                    pass
-
     # Removing features with the same distribution on 0 and 1 classes
     corr = pd.DataFrame(index = ['diff', 'p'])
     ind = data[data['TARGET'].notnull()].index
