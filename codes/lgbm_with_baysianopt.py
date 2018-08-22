@@ -8,6 +8,7 @@ import warnings
 warnings.simplefilter(action = 'ignore', category = FutureWarning)
 
 from sklearn.metrics import roc_auc_score, precision_score, recall_score
+from sklearn.decomposition import PCA
 from sklearn.model_selection import KFold, StratifiedKFold
 
 from lightgbm import LGBMClassifier
@@ -114,15 +115,15 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     df['app EXT_SOURCE std'] = df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].std(axis = 1)
     df['app EXT_SOURCE std'] = df['app EXT_SOURCE std'].fillna(df['app EXT_SOURCE std'].mean())
     df['app EXT_SOURCE prod'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
-    # df['app EXT_SOURCE_1 * EXT_SOURCE_2'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_2']
-    # df['app EXT_SOURCE_1 * EXT_SOURCE_3'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_3']
-    # df['app EXT_SOURCE_2 * EXT_SOURCE_3'] = df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
-    # df['app EXT_SOURCE_1 * DAYS_EMPLOYED'] = df['EXT_SOURCE_1'] * df['DAYS_EMPLOYED']
-    # df['app EXT_SOURCE_2 * DAYS_EMPLOYED'] = df['EXT_SOURCE_2'] * df['DAYS_EMPLOYED']
-    # df['app EXT_SOURCE_3 * DAYS_EMPLOYED'] = df['EXT_SOURCE_3'] * df['DAYS_EMPLOYED']
-    # df['app EXT_SOURCE_1 / DAYS_BIRTH'] = df['EXT_SOURCE_1'] / df['DAYS_BIRTH']
-    # df['app EXT_SOURCE_2 / DAYS_BIRTH'] = df['EXT_SOURCE_2'] / df['DAYS_BIRTH']
-    # df['app EXT_SOURCE_3 / DAYS_BIRTH'] = df['EXT_SOURCE_3'] / df['DAYS_BIRTH']
+    df['app EXT_SOURCE_1 * EXT_SOURCE_2'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_2']
+    df['app EXT_SOURCE_1 * EXT_SOURCE_3'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_3']
+    df['app EXT_SOURCE_2 * EXT_SOURCE_3'] = df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
+    df['app EXT_SOURCE_1 * DAYS_EMPLOYED'] = df['EXT_SOURCE_1'] * df['DAYS_EMPLOYED']
+    df['app EXT_SOURCE_2 * DAYS_EMPLOYED'] = df['EXT_SOURCE_2'] * df['DAYS_EMPLOYED']
+    df['app EXT_SOURCE_3 * DAYS_EMPLOYED'] = df['EXT_SOURCE_3'] * df['DAYS_EMPLOYED']
+    df['app EXT_SOURCE_1 / DAYS_BIRTH'] = df['EXT_SOURCE_1'] / df['DAYS_BIRTH']
+    df['app EXT_SOURCE_2 / DAYS_BIRTH'] = df['EXT_SOURCE_2'] / df['DAYS_BIRTH']
+    df['app EXT_SOURCE_3 / DAYS_BIRTH'] = df['EXT_SOURCE_3'] / df['DAYS_BIRTH']
 
     df['app AMT_CREDIT - AMT_GOODS_PRICE'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
     df['app AMT_CREDIT / AMT_GOODS_PRICE'] = df['AMT_CREDIT'] / df['AMT_GOODS_PRICE']
@@ -143,8 +144,8 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     df['app OWN_CAR_AGE / DAYS_BIRTH'] = df['OWN_CAR_AGE'] / df['DAYS_BIRTH']
     df['app OWN_CAR_AGE / DAYS_EMPLOYED'] = df['OWN_CAR_AGE'] / df['DAYS_EMPLOYED']
 
-    # df['app DAYS_LAST_PHONE_CHANGE / DAYS_BIRTH'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_BIRTH']
-    df['app DAYS_LAST_PHONE_CHANGE - DAYS_EMPLOYED'] = df['DAYS_LAST_PHONE_CHANGE'] - df['DAYS_EMPLOYED']
+    df['app DAYS_LAST_PHONE_CHANGE / DAYS_BIRTH'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_BIRTH']
+    df['app DAYS_LAST_PHONE_CHANGE / DAYS_EMPLOYED'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_EMPLOYED']
     df['app DAYS_EMPLOYED - DAYS_BIRTH'] = df['DAYS_EMPLOYED'] - df['DAYS_BIRTH']
     df['app DAYS_EMPLOYED / DAYS_BIRTH'] = df['DAYS_EMPLOYED'] / df['DAYS_BIRTH']
 
@@ -536,6 +537,14 @@ def clean_data(data):
     del corr, corr_test
     gc.collect()
 
+    # Get features by PCA
+    PCA_base_features = data.drop('TARGET', axis = 1)
+    pca = PCA()
+    pca.fit(PCA_base_features)
+    transformed = pca.fit_transform(features)
+    top10_PCA_component = transformed[:, 0:10]
+    print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:10]))
+
     # Removing features not interesting for classifier
     clf = LGBMClassifier(random_state = 0)
     train_index = data[data['TARGET'].notnull()].index
@@ -553,6 +562,9 @@ def clean_data(data):
 
     data.drop(train_columns, axis = 1, inplace = True)
     print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
+
+    for i in range(10):
+        data["PCA_" + str(i)] = top10_PCA_component[:, i]
 
     return data
 
