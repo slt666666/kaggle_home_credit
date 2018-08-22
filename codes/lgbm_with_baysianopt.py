@@ -553,7 +553,7 @@ def clean_data(data):
 
     score = 1
     new_columns = []
-    while score > .8:
+    while score > .75:
         train_columns = train_columns.drop(new_columns)
         clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
         f_imp = pd.Series(clf.feature_importances_, index = train_columns)
