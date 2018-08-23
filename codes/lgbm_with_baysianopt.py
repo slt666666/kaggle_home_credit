@@ -758,7 +758,7 @@ xgb_params = {
     'reg_lambda': 1.2
 }
 
-kfold_xgb(df, num_folds=5, xgb_params)
+kfold_xgb(df, 5, xgb_params)
 
 # def lgbm_evaluate(**params):
 #     warnings.simplefilter('ignore')
