@@ -646,6 +646,8 @@ class roc_callback(Callback):
         return
 
 folds = KFold(n_splits=5, shuffle=True, random_state=42)
+
+test_pred_proba = np.zeros(train_df.shape[0])
 sub_preds = np.zeros(X_test.shape[0])
 
 for n_fold, (trn_idx, val_idx) in enumerate(folds.split(X_train)):
@@ -681,11 +683,17 @@ for n_fold, (trn_idx, val_idx) in enumerate(folds.split(X_train)):
           callbacks=[roc_callback(training_data=(trn_x, trn_y),validation_data=(val_x, val_y))])
 
     print( 'Predicting...' )
+    test_pred_proba[val_idx] = clf.predict(val_x).flatten().clip(0,1)
     sub_preds += nn.predict(X_test).flatten().clip(0,1) / folds.n_splits
 
     gc.collect()
 
 print( 'Saving results...' )
+train = pd.DataFrame()
+train['SK_ID_CURR'] = df[training]['SK_ID_CURR']
+train['TARGET'] = test_pred_proba
+sub[['SK_ID_CURR', 'TARGET']].to_csv('train_nn.csv', index= False)
+
 sub = pd.DataFrame()
 sub['SK_ID_CURR'] = df[testing]['SK_ID_CURR']
 sub['TARGET'] = sub_preds
