@@ -573,7 +573,7 @@ def clean_data(data):
 
 
 df = clean_data(df)
-
+df.to_csv("all_data_1220.csv")
 
 def kfold_catboost(df, num_folds, params, stratified = False, train_prediction_file_name = 'train_prediction_cat.csv', test_prediction_file_name = 'prediction_cat.csv'):
 
