@@ -480,7 +480,7 @@ def aggregate(file_path = file_path):
     return reduce_mem_usage(df)
 
 
-# df = aggregate()
+df = aggregate()
 
 
 def corr_feature_with_target(feature, target):
@@ -558,16 +558,11 @@ def clean_data(data):
     clf = LGBMClassifier(random_state = 0)
     train_index = data[data['TARGET'].notnull()].index
     train_columns = data.drop('TARGET', axis = 1).columns
-
-    score = 1
     new_columns = []
-    while score > .75:
-        train_columns = train_columns.drop(new_columns)
-        clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
-        f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-        score = roc_auc_score(data.loc[train_index, 'TARGET'],
-                              clf.predict_proba(data.loc[train_index, train_columns])[:, 1])
-        new_columns = f_imp[f_imp > 0].index
+    clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
+    f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+    new_columns = f_imp.sort_values(ascending=False).index[0:500]
+    train_columns = train_columns.drop(new_columns)
 
     data.drop(train_columns, axis = 1, inplace = True)
     print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
@@ -578,8 +573,8 @@ def clean_data(data):
     return data
 
 
-# df = clean_data(df)
-df = pd.read_csv("all_data_1220.csv", index_col=0)
+df = clean_data(df)
+# df = pd.read_csv("all_data_1220.csv", index_col=0)
 
 y = df['TARGET']
 feats = [f for f in df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
@@ -656,7 +651,7 @@ for n_fold, (trn_idx, val_idx) in enumerate(folds.split(X_train)):
 
     print( 'Setting up neural network...' )
     nn = Sequential()
-    nn.add(Dense(units = 400 , kernel_initializer = 'normal', input_dim = 1218))
+    nn.add(Dense(units = 400 , kernel_initializer = 'normal', input_dim = X_test.shape[1]))
     nn.add(PReLU())
     nn.add(Dropout(.3))
     nn.add(Dense(units = 160 , kernel_initializer = 'normal'))
