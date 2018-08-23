@@ -696,5 +696,5 @@ kfold_xgb(df, 5, xgb_params)
 # bo.maximize(init_points = 5, n_iter = 10)
 # best_params = bo.res['max']['max_params']
 # best_params['max_depth'] = int(best_params['max_depth'])
-# print(bo.res['max']['max_val'])
+# print(bo.res['max']['max_params'])
 # kfold_xgb(df, 5, best_params, test_prediction_file_name = 'prediction_1_xgb.csv')

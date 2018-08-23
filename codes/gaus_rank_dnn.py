@@ -480,6 +480,104 @@ def aggregate(file_path = file_path):
 
 df = aggregate()
 
+
+def corr_feature_with_target(feature, target):
+    c0 = feature[target == 0].dropna()
+    c1 = feature[target == 1].dropna()
+
+    if set(feature.unique()) == set([0, 1]):
+        diff = abs(c0.mean(axis = 0) - c1.mean(axis = 0))
+    else:
+        diff = abs(c0.median(axis = 0) - c1.median(axis = 0))
+
+    p = ranksums(c0, c1)[1] if ((len(c0) >= 20) & (len(c1) >= 20)) else 2
+
+    return [diff, p]
+
+
+def clean_data(data):
+    warnings.simplefilter(action = 'ignore')
+
+    # Removing empty features
+    nun = data.nunique()
+    empty = list(nun[nun <= 1].index)
+
+    data.drop(empty, axis = 1, inplace = True)
+    print('After removing empty features there are {0:d} features'.format(data.shape[1]))
+
+    # Removing features with the same distribution on 0 and 1 classes
+    corr = pd.DataFrame(index = ['diff', 'p'])
+    ind = data[data['TARGET'].notnull()].index
+
+    for c in data.columns.drop('TARGET'):
+        corr[c] = corr_feature_with_target(data.loc[ind, c], data.loc[ind, 'TARGET'])
+
+    corr = corr.T
+    corr['diff_norm'] = abs(corr['diff'] / data.mean(axis = 0))
+
+    to_del_1 = corr[((corr['diff'] == 0) & (corr['p'] > .05))].index
+    to_del_2 = corr[((corr['diff_norm'] < .5) & (corr['p'] > .05))].drop(to_del_1).index
+    to_del = list(to_del_1) + list(to_del_2)
+    if 'SK_ID_CURR' in to_del:
+        to_del.remove('SK_ID_CURR')
+
+    data.drop(to_del, axis = 1, inplace = True)
+    print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
+
+    # Removing features with not the same distribution on train and test datasets
+    corr_test = pd.DataFrame(index = ['diff', 'p'])
+    target = data['TARGET'].notnull().astype(int)
+
+    for c in data.columns.drop('TARGET'):
+        corr_test[c] = corr_feature_with_target(data[c], target)
+
+    corr_test = corr_test.T
+    corr_test['diff_norm'] = abs(corr_test['diff'] / data.mean(axis = 0))
+
+    bad_features = corr_test[((corr_test['p'] < .05) & (corr_test['diff_norm'] > 1))].index
+    bad_features = corr.loc[bad_features][corr['diff_norm'] == 0].index
+
+    data.drop(bad_features, axis = 1, inplace = True)
+    print('After removing features with not the same distribution on train and test datasets there are {0:d} features'.format(data.shape[1]))
+
+    del corr, corr_test
+    gc.collect()
+
+    # Get features by PCA
+    PCA_base_features = data.drop('TARGET', axis = 1)
+    PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
+    pca = PCA()
+    pca.fit(PCA_base_features)
+    transformed = pca.fit_transform(PCA_base_features)
+    top10_PCA_component = transformed[:, 0:10]
+    print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:10]))
+
+    # Removing features not interesting for classifier
+    clf = LGBMClassifier(random_state = 0)
+    train_index = data[data['TARGET'].notnull()].index
+    train_columns = data.drop('TARGET', axis = 1).columns
+
+    score = 1
+    new_columns = []
+    while score > .75:
+        train_columns = train_columns.drop(new_columns)
+        clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
+        f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+        score = roc_auc_score(data.loc[train_index, 'TARGET'],
+                              clf.predict_proba(data.loc[train_index, train_columns])[:, 1])
+        new_columns = f_imp[f_imp > 0].index
+
+    data.drop(train_columns, axis = 1, inplace = True)
+    print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
+
+    for i in range(10):
+        data["PCA_" + str(i)] = top10_PCA_component[:, i]
+
+    return data
+
+
+df = clean_data(df)
+
 y = df['TARGET']
 feats = [f for f in df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
 X = df[feats]
@@ -553,7 +651,7 @@ for n_fold, (trn_idx, val_idx) in enumerate(folds.split(X_train)):
 
     print( 'Setting up neural network...' )
     nn = Sequential()
-    nn.add(Dense(units = 400 , kernel_initializer = 'normal', input_dim = 718))
+    nn.add(Dense(units = 400 , kernel_initializer = 'normal', input_dim = 1215))
     nn.add(PReLU())
     nn.add(Dropout(.3))
     nn.add(Dense(units = 160 , kernel_initializer = 'normal'))

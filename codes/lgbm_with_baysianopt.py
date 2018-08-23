@@ -737,6 +737,6 @@ feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_na
 # best_params = bo.res['max']['max_params']
 # best_params['num_leaves'] = int(best_params['num_leaves'])
 # best_params['max_depth'] = int(best_params['max_depth'])
-# print(bo.res['max']['max_val'])
+# print(bo.res['max']['max_params'])
 # feature_importance, scor = cv_scores(df, 5, best_params, test_prediction_file_name = 'prediction_1.csv')
 # print(scor)
