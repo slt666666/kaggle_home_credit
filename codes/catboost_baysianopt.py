@@ -574,17 +574,6 @@ def clean_data(data):
 
 df = clean_data(df)
 
-catboost_params= {"iterations": 10000,
-                  "learning_rate": 0.09,
-                  "depth": 6,
-                  "bagging_temperature": 0.5,
-                  "loss_function":'Logloss',
-                  "eval_metric": 'CrossEntropy',
-                  "metric_period":400,
-                  "od_type":'Iter',
-                  "od_wait": 200,
-                  "random_seed":17,
-                  "allow_writing_files":False}
 
 def kfold_catboost(df, num_folds, params, stratified = False, train_prediction_file_name = 'train_prediction_cat.csv', test_prediction_file_name = 'prediction_cat.csv'):
 
@@ -651,3 +640,17 @@ def kfold_catboost(df, num_folds, params, stratified = False, train_prediction_f
     df_prediction.to_csv(test_prediction_file_name, index = False)
     del df_prediction
     gc.collect()
+
+catboost_params= {"iterations": 10000,
+                  "learning_rate": 0.09,
+                  "depth": 6,
+                  "bagging_temperature": 0.5,
+                  "loss_function":'Logloss',
+                  "eval_metric": 'CrossEntropy',
+                  "metric_period":400,
+                  "od_type":'Iter',
+                  "od_wait": 200,
+                  "random_seed":17,
+                  "allow_writing_files":False}
+
+kfold_catboost(df, 5, catboost_params)
