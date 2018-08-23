@@ -544,7 +544,7 @@ class roc_callback(Callback):
     def on_batch_end(self, batch, logs={}):
         return
 
-folds = KFold(n_splits=10, shuffle=True, random_state=42)
+folds = KFold(n_splits=5, shuffle=True, random_state=42)
 sub_preds = np.zeros(X_test.shape[0])
 
 for n_fold, (trn_idx, val_idx) in enumerate(folds.split(X_train)):
