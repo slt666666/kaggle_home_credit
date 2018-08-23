@@ -647,7 +647,7 @@ class roc_callback(Callback):
 
 folds = KFold(n_splits=5, shuffle=True, random_state=42)
 
-test_pred_proba = np.zeros(train_df.shape[0])
+test_pred_proba = np.zeros(X_train.shape[0])
 sub_preds = np.zeros(X_test.shape[0])
 
 for n_fold, (trn_idx, val_idx) in enumerate(folds.split(X_train)):
