@@ -12,6 +12,7 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import KFold, StratifiedKFold
 
 from lightgbm import LGBMClassifier
+from xgboost import XGBClassifier
 
 from scipy.stats import ranksums
 from bayes_opt import BayesianOptimization
@@ -688,8 +689,77 @@ lgbm_params = {
             'verbose': -1
 }
 
-feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_name = 'prediction_0.csv')
-#
+# feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_name = 'prediction_0.csv')
+
+# XGB GBDT with KFold or Stratified KFold
+def kfold_xgb(df, num_folds, params, stratified = False, test_prediction_file_name = 'prediction_xgb.csv'):
+
+    clf = XGBClassifier(**params)
+
+    # Divide in training/validation and test data
+    train_df = df[df['TARGET'].notnull()]
+    test_df = df[df['TARGET'].isnull()]
+    print("Starting XGB. Train shape: {}, test shape: {}".format(train_df.shape, test_df.shape))
+    del df
+    gc.collect()
+    # Cross validation model
+    if stratified:
+        folds = StratifiedKFold(n_splits= num_folds, shuffle=True, random_state=1001)
+    else:
+        folds = KFold(n_splits= num_folds, shuffle=True, random_state=1001)
+    # Create arrays and dataframes to store results
+    test_pred_proba = np.zeros(train_df.shape[0])
+    prediction = np.zeros(test_df.shape[0])
+
+    df_feature_importance = pd.DataFrame(index = feats)
+
+    feats = [f for f in train_df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
+
+    for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_df[feats], train_df['TARGET'])):
+        train_x, train_y = train_df[feats].iloc[train_idx], train_df['TARGET'].iloc[train_idx]
+        valid_x, valid_y = train_df[feats].iloc[valid_idx], train_df['TARGET'].iloc[valid_idx]
+
+        clf.fit(train_x, train_y, eval_set=[(train_x, train_y), (valid_x, valid_y)],
+            eval_metric= 'auc', verbose= 100, early_stopping_rounds= 200)
+
+        test_pred_proba[valid_idx] = clf.predict_proba(valid_x, ntree_limit=clf.best_ntree_limit)[:, 1]
+        prediction += clf.predict_proba(test_df[feats], ntree_limit=clf.best_ntree_limit)[:, 1]  / folds.n_splits
+
+        df_feature_importance[n_fold] = pd.Series(clf.feature_importances_, index = feats)
+
+        print('Fold %2d AUC : %.6f' % (n_fold, roc_auc_score(valid_y, test_pred_proba[valid_idx])))
+        del train_x, train_y, valid_x, valid_y
+        gc.collect()
+
+    roc_auc_test = roc_auc_score(train_df['TARGET'], test_pred_proba)
+    print('Full AUC score %.6f' % roc_auc_test)
+
+    df_feature_importance.fillna(0, inplace = True)
+    df_feature_importance['mean'] = df_feature_importance.mean(axis = 1)
+
+    df_prediction = test_df[['SK_ID_CURR']]
+    df_prediction['TARGET'] = prediction
+    df_prediction.to_csv(test_prediction_file_name, index = False)
+    del df_prediction
+    gc.collect()
+
+
+xgb_params = {
+    'learning_rate': 0.01,
+    'n_estimators': 10000,
+    'max_depth': 4,
+    'min_child_weight': 5,
+    'subsample': 0.8,
+    'colsample_bytree': 0.8,
+    'objective': 'binary:logistic',
+    'nthread': 8,
+    'scale_pos_weight': 2.5,
+    'seed': 27,
+    'reg_lambda': 1.2,
+}
+
+kfold_xgb(df, num_folds=5, xgb_params)
+
 # def lgbm_evaluate(**params):
 #     warnings.simplefilter('ignore')
 #
