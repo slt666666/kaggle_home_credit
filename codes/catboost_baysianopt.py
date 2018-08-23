@@ -608,7 +608,6 @@ def kfold_catboost(df, num_folds, params, stratified = False, train_prediction_f
         clf.fit(train_x, train_y,
                  eval_set=[(train_x, train_y), (valid_x, valid_y)],
                  use_best_model=True,
-                 eval_metric = 'AUC',
                  verbose=True)
 
         test_pred_proba[valid_idx] = clf.predict_proba(valid_x)[:,1]
