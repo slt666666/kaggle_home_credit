@@ -683,7 +683,7 @@ for n_fold, (trn_idx, val_idx) in enumerate(folds.split(X_train)):
           callbacks=[roc_callback(training_data=(trn_x, trn_y),validation_data=(val_x, val_y))])
 
     print( 'Predicting...' )
-    test_pred_proba[val_idx] = clf.predict(val_x).flatten().clip(0,1)
+    test_pred_proba[val_idx] = nn.predict(val_x).flatten().clip(0,1)
     sub_preds += nn.predict(X_test).flatten().clip(0,1) / folds.n_splits
 
     gc.collect()
