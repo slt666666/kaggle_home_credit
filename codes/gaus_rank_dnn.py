@@ -578,7 +578,8 @@ def clean_data(data):
     return data
 
 
-df = clean_data(df)
+# df = clean_data(df)
+df = pd.read_csv("all_data_1220.csv", index_col=0)
 
 y = df['TARGET']
 feats = [f for f in df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
@@ -653,7 +654,7 @@ for n_fold, (trn_idx, val_idx) in enumerate(folds.split(X_train)):
 
     print( 'Setting up neural network...' )
     nn = Sequential()
-    nn.add(Dense(units = 400 , kernel_initializer = 'normal', input_dim = 1215))
+    nn.add(Dense(units = 400 , kernel_initializer = 'normal', input_dim = 1218))
     nn.add(PReLU())
     nn.add(Dropout(.3))
     nn.add(Dense(units = 160 , kernel_initializer = 'normal'))
