@@ -640,7 +640,7 @@ def kfold_catboost(df, num_folds, params, stratified = False, train_prediction_f
     del df_prediction
     gc.collect()
 
-catboost_params= {"iterations": 10000,
+catboost_params= {"iterations": 1600,
                   "learning_rate": 0.09,
                   "thread_count": 8,
                   "depth": 6,
