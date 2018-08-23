@@ -20,6 +20,8 @@ from keras.layers.advanced_activations import PReLU
 from keras.optimizers import Adam
 from keras.callbacks import Callback
 
+from lightgbm import LGBMClassifier
+
 from scipy.stats import ranksums
 
 def reduce_mem_usage(data, verbose = True):
