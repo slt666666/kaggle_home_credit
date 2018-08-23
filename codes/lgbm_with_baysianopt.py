@@ -500,6 +500,15 @@ def clean_data(data):
     data.drop(empty, axis = 1, inplace = True)
     print('After removing empty features there are {0:d} features'.format(data.shape[1]))
 
+    # Get features by PCA
+    PCA_base_features = data.drop('TARGET', axis = 1)
+    PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
+    pca = PCA()
+    pca.fit(PCA_base_features)
+    transformed = pca.fit_transform(PCA_base_features)
+    top10_PCA_component = transformed[:, 0:20]
+    print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:10]))
+
     # Removing features with the same distribution on 0 and 1 classes
     corr = pd.DataFrame(index = ['diff', 'p'])
     ind = data[data['TARGET'].notnull()].index
@@ -538,15 +547,6 @@ def clean_data(data):
     del corr, corr_test
     gc.collect()
 
-    # Get features by PCA
-    PCA_base_features = data.drop('TARGET', axis = 1)
-    PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
-    pca = PCA()
-    pca.fit(PCA_base_features)
-    transformed = pca.fit_transform(PCA_base_features)
-    top10_PCA_component = transformed[:, 0:10]
-    print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:10]))
-
     # Removing features not interesting for classifier
     clf = LGBMClassifier(random_state = 0)
     train_index = data[data['TARGET'].notnull()].index
@@ -565,7 +565,7 @@ def clean_data(data):
     data.drop(train_columns, axis = 1, inplace = True)
     print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
-    for i in range(10):
+    for i in range(20):
         data["PCA_" + str(i)] = top10_PCA_component[:, i]
 
     return data
