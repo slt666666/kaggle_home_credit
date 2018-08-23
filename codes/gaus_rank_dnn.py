@@ -480,7 +480,7 @@ def aggregate(file_path = file_path):
     return reduce_mem_usage(df)
 
 
-df = aggregate()
+# df = aggregate()
 
 
 def corr_feature_with_target(feature, target):
