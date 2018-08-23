@@ -711,9 +711,9 @@ def kfold_xgb(df, num_folds, params, stratified = False, test_prediction_file_na
     test_pred_proba = np.zeros(train_df.shape[0])
     prediction = np.zeros(test_df.shape[0])
 
-    df_feature_importance = pd.DataFrame(index = feats)
-
     feats = [f for f in train_df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
+
+    df_feature_importance = pd.DataFrame(index = feats)
 
     for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_df[feats], train_df['TARGET'])):
         train_x, train_y = train_df[feats].iloc[train_idx], train_df['TARGET'].iloc[train_idx]
@@ -755,7 +755,7 @@ xgb_params = {
     'nthread': 8,
     'scale_pos_weight': 2.5,
     'seed': 27,
-    'reg_lambda': 1.2,
+    'reg_lambda': 1.2
 }
 
 kfold_xgb(df, num_folds=5, xgb_params)
