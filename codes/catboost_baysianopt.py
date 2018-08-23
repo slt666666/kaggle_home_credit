@@ -475,7 +475,7 @@ def aggregate(file_path = file_path):
     return reduce_mem_usage(df)
 
 
-df = aggregate()
+# df = aggregate()
 
 def corr_feature_with_target(feature, target):
     c0 = feature[target == 0].dropna()
@@ -572,8 +572,8 @@ def clean_data(data):
     return data
 
 
-df = clean_data(df)
-df.to_csv("all_data_1220.csv")
+# df = clean_data(df)
+df = pd.read_csv("all_data_1220.csv", index_col=0)
 
 def kfold_catboost(df, num_folds, params, stratified = False, train_prediction_file_name = 'train_prediction_cat.csv', test_prediction_file_name = 'prediction_cat.csv'):
 
@@ -583,7 +583,7 @@ def kfold_catboost(df, num_folds, params, stratified = False, train_prediction_f
     train_df = df[df['TARGET'].notnull()]
     test_df = df[df['TARGET'].isnull()]
 
-    print("Starting XGB. Train shape: {}, test shape: {}".format(train_df.shape, test_df.shape))
+    print("Starting CatBoost. Train shape: {}, test shape: {}".format(train_df.shape, test_df.shape))
     del df
     gc.collect()
     # Cross validation model
@@ -642,6 +642,7 @@ def kfold_catboost(df, num_folds, params, stratified = False, train_prediction_f
 
 catboost_params= {"iterations": 10000,
                   "learning_rate": 0.09,
+                  "thread_count": 8,
                   "depth": 6,
                   "bagging_temperature": 0.5,
                   "loss_function":'Logloss',
