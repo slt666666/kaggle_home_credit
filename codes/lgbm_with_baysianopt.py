@@ -575,7 +575,7 @@ df = clean_data(df)
 
 
 def cv_scores(df, num_folds, params, stratified = False, verbose = -1,
-              save_train_prediction = False, train_prediction_file_name = 'train_prediction.csv',
+              save_train_prediction = True, train_prediction_file_name = 'train_prediction.csv',
               save_test_prediction = True, test_prediction_file_name = 'test_prediction.csv'):
     warnings.simplefilter('ignore')
 
@@ -689,10 +689,10 @@ lgbm_params = {
             'verbose': -1
 }
 
-# feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_name = 'prediction_0.csv')
+feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_name = 'prediction_0.csv')
 
 # XGB GBDT with KFold or Stratified KFold
-def kfold_xgb(df, num_folds, params, stratified = False, test_prediction_file_name = 'prediction_xgb.csv'):
+def kfold_xgb(df, num_folds, params, stratified = False, train_prediction_file_name = 'train_prediction_xgb.csv', test_prediction_file_name = 'prediction_xgb.csv'):
 
     clf = XGBClassifier(**params)
 
@@ -737,6 +737,14 @@ def kfold_xgb(df, num_folds, params, stratified = False, test_prediction_file_na
     df_feature_importance.fillna(0, inplace = True)
     df_feature_importance['mean'] = df_feature_importance.mean(axis = 1)
 
+    # train prediction
+    df_prediction = train_df[['SK_ID_CURR', 'TARGET']]
+    df_prediction['Prediction'] = test_pred_proba
+    df_prediction.to_csv(train_prediction_file_name, index = False)
+    del df_prediction
+    gc.collect()
+
+    # test prediction
     df_prediction = test_df[['SK_ID_CURR']]
     df_prediction['TARGET'] = prediction
     df_prediction.to_csv(test_prediction_file_name, index = False)
@@ -758,7 +766,7 @@ xgb_params = {
     'reg_lambda': 1.2
 }
 
-# kfold_xgb(df, 5, xgb_params)
+kfold_xgb(df, 5, xgb_params)
 
 # def lgbm_evaluate(**params):
 #     warnings.simplefilter('ignore')
@@ -811,51 +819,51 @@ xgb_params = {
 # print(scor)
 
 
-def xgb_evaluate(**params):
-    warnings.simplefilter('ignore')
-
-    params['max_depth'] = int(params['max_depth'])
-
-    clf = XGBClassifier(**params, n_estimators = 10000, nthread = 32)
-
-    train_df = df[df['TARGET'].notnull()]
-    test_df = df[df['TARGET'].isnull()]
-
-    folds = KFold(n_splits = 2, shuffle = True, random_state = 1001)
-
-    test_pred_proba = np.zeros(train_df.shape[0])
-
-    feats = [f for f in train_df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
-
-    for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_df[feats], train_df['TARGET'])):
-        train_x, train_y = train_df[feats].iloc[train_idx], train_df['TARGET'].iloc[train_idx]
-        valid_x, valid_y = train_df[feats].iloc[valid_idx], train_df['TARGET'].iloc[valid_idx]
-
-        clf.fit(train_x, train_y,
-                eval_set = [(train_x, train_y), (valid_x, valid_y)], eval_metric = 'auc',
-                verbose = False, early_stopping_rounds = 100)
-
-        test_pred_proba[valid_idx] = clf.predict_proba(valid_x, ntree_limit=clf.best_ntree_limit)[:, 1]
-
-        del train_x, train_y, valid_x, valid_y
-        gc.collect()
-
-    return roc_auc_score(train_df['TARGET'], test_pred_proba)
-
-params = {
-    'learning_rate': (.01, .02),
-    'max_depth': (4, 8),
-    'min_child_weight': (1, 10),
-    'subsample': (0.7, 1),
-    'colsample_bytree': (0.7, 1),
-    'objective': 'binary:logistic',
-    'scale_pos_weight': 2.5,
-    'seed': 27,
-    'reg_lambda': (1.0, 1.4)
-}
-bo = BayesianOptimization(xgb_evaluate, params)
-bo.maximize(init_points = 5, n_iter = 10)
-best_params = bo.res['max']['max_params']
-best_params['max_depth'] = int(best_params['max_depth'])
-print(bo.res['max']['max_val'])
-kfold_xgb(df, 5, best_params, test_prediction_file_name = 'prediction_1_xgb.csv')
+# def xgb_evaluate(**params):
+#     warnings.simplefilter('ignore')
+#
+#     params['max_depth'] = int(params['max_depth'])
+#
+#     clf = XGBClassifier(**params, n_estimators = 10000, nthread = 32)
+#
+#     train_df = df[df['TARGET'].notnull()]
+#     test_df = df[df['TARGET'].isnull()]
+#
+#     folds = KFold(n_splits = 2, shuffle = True, random_state = 1001)
+#
+#     test_pred_proba = np.zeros(train_df.shape[0])
+#
+#     feats = [f for f in train_df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
+#
+#     for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_df[feats], train_df['TARGET'])):
+#         train_x, train_y = train_df[feats].iloc[train_idx], train_df['TARGET'].iloc[train_idx]
+#         valid_x, valid_y = train_df[feats].iloc[valid_idx], train_df['TARGET'].iloc[valid_idx]
+#
+#         clf.fit(train_x, train_y,
+#                 eval_set = [(train_x, train_y), (valid_x, valid_y)], eval_metric = 'auc',
+#                 verbose = False, early_stopping_rounds = 100)
+#
+#         test_pred_proba[valid_idx] = clf.predict_proba(valid_x, ntree_limit=clf.best_ntree_limit)[:, 1]
+#
+#         del train_x, train_y, valid_x, valid_y
+#         gc.collect()
+#
+#     return roc_auc_score(train_df['TARGET'], test_pred_proba)
+#
+# params = {
+#     'learning_rate': (.01, .02),
+#     'max_depth': (4, 8),
+#     'min_child_weight': (1, 10),
+#     'subsample': (0.7, 1),
+#     'colsample_bytree': (0.7, 1),
+#     'objective': 'binary:logistic',
+#     'scale_pos_weight': 2.5,
+#     'seed': 27,
+#     'reg_lambda': (1.0, 1.4)
+# }
+# bo = BayesianOptimization(xgb_evaluate, params)
+# bo.maximize(init_points = 5, n_iter = 10)
+# best_params = bo.res['max']['max_params']
+# best_params['max_depth'] = int(best_params['max_depth'])
+# print(bo.res['max']['max_val'])
+# kfold_xgb(df, 5, best_params, test_prediction_file_name = 'prediction_1_xgb.csv')
