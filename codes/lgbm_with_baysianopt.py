@@ -290,8 +290,8 @@ def previous_application(file_path = file_path, nan_as_category = True):
     # Categorical convert to mean_num!!
     df_train = pd.read_csv(file_path + 'application_train.csv')
     df_train = df_train[['SK_ID_CURR', 'TARGET']]
-    categorical_features = df_prev.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
-    for i in categorical_features.index:
+    categorical = df_prev.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
+    for i in categorical.index:
         df_cate = df_prev[['SK_ID_CURR', i]]
         merge_data = pd.merge(df_train, df_cate, on='SK_ID_CURR', how='right')
         merge_data = merge_data[merge_data['TARGET'].notnull()]
@@ -303,7 +303,7 @@ def previous_application(file_path = file_path, nan_as_category = True):
     # Aggregations for application set
     aggregations = {}
     for col in df_prev.columns:
-        aggregations[col] = ['mean'] if col in categorical else ['min', 'max', 'size', 'mean', 'var', 'sum']
+        aggregations[col] = ['mean'] if col in categorical.index else ['min', 'max', 'size', 'mean', 'var', 'sum']
     df_prev_agg = df_prev.groupby('SK_ID_CURR').agg(aggregations)
     df_prev_agg.columns = pd.Index(['PREV_' + e[0] + "_" + e[1].upper() for e in df_prev_agg.columns.tolist()])
 
