@@ -285,7 +285,20 @@ def previous_application(file_path = file_path, nan_as_category = True):
     df_prev['prev DAYS_TERMINATION less -500'] = (df_prev['DAYS_TERMINATION'] < -500).astype(int)
 
     # Categorical features with One-Hot encode
-    df_prev, categorical = one_hot_encoder(df_prev, nan_as_category)
+    # df_prev, categorical = one_hot_encoder(df_prev, nan_as_category)
+
+    # Categorical convert to mean_num!!
+    df_train = pd.read_csv(file_path + 'application_train.csv')
+    df_train = df_train[['SK_ID_CURR', 'TARGET']]
+    categorical_features = df_prev.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
+    for i in categorical_features.index:
+        df_cate = prev_app[['SK_ID_CURR', i]]
+        merge_data = pd.merge(df_train, df_cate, on='SK_ID_CURR', how='right')
+        merge_data = merge_data[merge_data['TARGET'].notnull()]
+        cate = merge_data[['TARGET', i]].groupby(i).mean()
+        df_prev[i] = df_prev[i].replace(cate['TARGET'].to_dict())
+    del df_train
+    gc.collect()
 
     # Aggregations for application set
     aggregations = {}
