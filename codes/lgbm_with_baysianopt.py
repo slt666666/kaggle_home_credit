@@ -511,7 +511,7 @@ def clean_data(data):
     matched_list.extend(over2_lgb_f)
     matched_list = set(matched_list)
 
-    data = data[['SK_ID_CURR', 'TARGET'] + matched_list]
+    data = data[['SK_ID_CURR', 'TARGET'] + list(matched_list)]
 
     # # Removing empty features
     # nun = data.nunique()
