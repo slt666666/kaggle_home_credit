@@ -493,6 +493,17 @@ def corr_feature_with_target(feature, target):
 def clean_data(data):
     warnings.simplefilter(action = 'ignore')
 
+    # Get features by PCA
+    PCA_base_features = data.drop('TARGET', axis = 1)
+    PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
+    pca = PCA()
+    pca.fit(PCA_base_features)
+    transformed = pca.fit_transform(PCA_base_features)
+    top20_PCA_component = transformed[:, 0:20]
+    print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:20]))
+    del PCA_base_features, pca, transformed
+    gc.collect()
+
     xgb_features = pd.read_csv("../features/xgb_feature_importance.csv", header=None)
     lgb_features = pd.read_csv("../features/lgbm_feature_importance.csv", header=None)
     xgb_f = xgb_features.sort_values(by=1, ascending=False)[0:700][0]
@@ -519,15 +530,6 @@ def clean_data(data):
     #
     # data.drop(empty, axis = 1, inplace = True)
     # print('After removing empty features there are {0:d} features'.format(data.shape[1]))
-
-    # # Get features by PCA
-    # PCA_base_features = data.drop('TARGET', axis = 1)
-    # PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
-    # pca = PCA()
-    # pca.fit(PCA_base_features)
-    # transformed = pca.fit_transform(PCA_base_features)
-    # top10_PCA_component = transformed[:, 0:20]
-    # print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:20]))
 
     # # Removing features with the same distribution on 0 and 1 classes
     # corr = pd.DataFrame(index = ['diff', 'p'])
@@ -585,8 +587,8 @@ def clean_data(data):
     # data.drop(train_columns, axis = 1, inplace = True)
     # print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
-    # for i in range(20):
-    #     data["PCA_" + str(i)] = top10_PCA_component[:, i]
+    for i in range(20):
+        data["PCA_" + str(i)] = top20_PCA_component[:, i]
 
     return data
 
