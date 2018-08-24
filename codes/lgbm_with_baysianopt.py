@@ -82,10 +82,10 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     df.drop(df[df['NAME_FAMILY_STATUS'] == 'Unknown'].index, inplace = True)
 
     # make categorical -> num set
-    # categorical_features = df_train.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
-    # for i in categorical_features.index:
-    #     cate = df_train[["TARGET", i]].groupby(i).mean()
-    #     df[["TARGET", i]] = df[["TARGET", i]].replace(cate['TARGET'].to_dict())
+    categorical_features = df_train.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
+    for i in categorical_features.index:
+        cate = df_train[["TARGET", i]].groupby(i).mean()
+        df[["TARGET", i]] = df[["TARGET", i]].replace(cate['TARGET'].to_dict())
 
     del df_train, df_test
     gc.collect()
@@ -103,12 +103,12 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     df.loc[df['AMT_REQ_CREDIT_BUREAU_QRT'] > 10, 'AMT_REQ_CREDIT_BUREAU_QRT'] = np.nan
     df.loc[df['OBS_30_CNT_SOCIAL_CIRCLE'] > 40, 'OBS_30_CNT_SOCIAL_CIRCLE'] = np.nan
 
-    # Categorical features with Binary encode (0 or 1; two categories)
-    for bin_feature in ['CODE_GENDER', 'FLAG_OWN_CAR', 'FLAG_OWN_REALTY']:
-        df[bin_feature], _ = pd.factorize(df[bin_feature])
-
-    # Categorical features with One-Hot encode
-    df, _ = one_hot_encoder(df, nan_as_category)
+    # # Categorical features with Binary encode (0 or 1; two categories)
+    # for bin_feature in ['CODE_GENDER', 'FLAG_OWN_CAR', 'FLAG_OWN_REALTY']:
+    #     df[bin_feature], _ = pd.factorize(df[bin_feature])
+    #
+    # # Categorical features with One-Hot encode
+    # df, _ = one_hot_encoder(df, nan_as_category)
 
     # Some new features
     df['app missing'] = df.isnull().sum(axis = 1).values
@@ -741,20 +741,20 @@ feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_na
 #
 #     return roc_auc_score(train_df['TARGET'], test_pred_proba)
 #
-# params = {'colsample_bytree': (0.6, 1),
+# params = {'colsample_bytree': (0.8, 1),
 #           'learning_rate': (.01, .02),
-#           'num_leaves': (28, 42),
+#           'num_leaves': (32, 40),
 #           'subsample': (0.8, 1),
-#           'max_depth': (6, 10),
-#           'reg_alpha': (.02, .08),
-#           'reg_lambda': (.04, .1),
+#           'max_depth': (7, 9),
+#           'reg_alpha': (.02, .06),
+#           'reg_lambda': (.06, .08),
 #           'min_split_gain': (.01, .03),
-#           'min_child_weight': (30, 40)}
+#           'min_child_weight': (38, 40)}
 # bo = BayesianOptimization(lgbm_evaluate, params)
-# bo.maximize(init_points = 5, n_iter = 30)
+# bo.maximize(init_points = 5, n_iter = 10)
 # best_params = bo.res['max']['max_params']
 # best_params['num_leaves'] = int(best_params['num_leaves'])
 # best_params['max_depth'] = int(best_params['max_depth'])
 # print(bo.res['max']['max_params'])
-# feature_importance, scor = cv_scores(df, 5, best_params, test_prediction_file_name = 'prediction_bayes.csv')
+# feature_importance, scor = cv_scores(df, 5, best_params, test_prediction_file_name = 'prediction_1.csv')
 # print(scor)
