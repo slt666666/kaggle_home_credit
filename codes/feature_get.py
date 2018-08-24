@@ -502,7 +502,7 @@ def clean_data(data):
     print('After removing empty features there are {0:d} features'.format(data.shape[1]))
 
 df = clean_data(df)
-train_data = df[df['TARGET'].notnull()]
+data = df[df['TARGET'].notnull()]
 
 def get_feature_importances(data, shuffle, seed=None):
     # Gather real features
@@ -526,7 +526,7 @@ def get_feature_importances(data, shuffle, seed=None):
         'max_depth': 8,
         'seed': seed,
         'bagging_freq': 1,
-        'n_jobs': 4
+        'n_jobs': 16
     }
 
     # Fit the model
@@ -544,7 +544,7 @@ def get_feature_importances(data, shuffle, seed=None):
 # Seed the unexpected randomness of this world
 np.random.seed(123)
 # Get the actual importance, i.e. without shuffling
-actual_imp_df = get_feature_importances(data=train_data, shuffle=False)
+actual_imp_df = get_feature_importances(data=data, shuffle=False)
 
 null_imp_df = pd.DataFrame()
 nb_runs = 80
