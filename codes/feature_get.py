@@ -500,6 +500,7 @@ def clean_data(data):
 
     data.drop(empty, axis = 1, inplace = True)
     print('After removing empty features there are {0:d} features'.format(data.shape[1]))
+    return data
 
 df = clean_data(df)
 data = df[df['TARGET'].notnull()]
