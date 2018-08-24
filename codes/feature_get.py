@@ -11,6 +11,7 @@ from sklearn.metrics import roc_auc_score, precision_score, recall_score
 from sklearn.decomposition import PCA
 from sklearn.model_selection import KFold, StratifiedKFold
 
+import lightgbm as lgb
 from lightgbm import LGBMClassifier
 from xgboost import XGBClassifier
 
@@ -500,48 +501,95 @@ def clean_data(data):
     data.drop(empty, axis = 1, inplace = True)
     print('After removing empty features there are {0:d} features'.format(data.shape[1]))
 
-    # Removing features with the same distribution on 0 and 1 classes
-    corr = pd.DataFrame(index = ['diff', 'p'])
-    ind = data[data['TARGET'].notnull()].index
+df = clean_data(df)
+train_data = df[df['TARGET'].notnull()]
 
-    for c in data.columns.drop('TARGET'):
-        corr[c] = corr_feature_with_target(data.loc[ind, c], data.loc[ind, 'TARGET'])
+def get_feature_importances(data, shuffle, seed=None):
+    # Gather real features
+    train_features = [f for f in data if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
+    # Go over fold and keep track of CV score (train and valid) and feature importances
 
-    corr = corr.T
-    corr['diff_norm'] = abs(corr['diff'] / data.mean(axis = 0))
+    # Shuffle target if required
+    y = data['TARGET'].copy()
+    if shuffle:
+        # Here you could as well use a binomial distribution
+        y = data['TARGET'].copy().sample(frac=1.0)
 
-    to_del_1 = corr[((corr['diff'] == 0) & (corr['p'] > .05))].index
-    to_del_2 = corr[((corr['diff_norm'] < .5) & (corr['p'] > .05))].drop(to_del_1).index
-    to_del = list(to_del_1) + list(to_del_2)
-    if 'SK_ID_CURR' in to_del:
-        to_del.remove('SK_ID_CURR')
-
-    data.drop(to_del, axis = 1, inplace = True)
-    print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
-
-    clf = LGBMClassifier(random_state = 0)
-    train_index = data[data['TARGET'].notnull()].index
-    train_columns = data.drop('TARGET', axis = 1).columns
-
-    clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
-    f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-    f_imp.to_csv("lgbm_feature_importance.csv")
-
-    xgb_params = {
-        'learning_rate': 0.01,
-        'n_estimators': 5000,
-        'max_depth': 4,
-        'min_child_weight': 5,
-        'subsample': 0.8,
-        'colsample_bytree': 0.8,
-        'objective': 'binary:logistic',
-        'nthread': 8,
-        'scale_pos_weight': 2.5,
-        'seed': 27,
-        'reg_lambda': 1.2
+    # Fit LightGBM in RF mode, yes it's quicker than sklearn RandomForest
+    dtrain = lgb.Dataset(data[train_features], y, free_raw_data=False, silent=True)
+    lgb_params = {
+        'objective': 'binary',
+        'boosting_type': 'rf',
+        'subsample': 0.623,
+        'colsample_bytree': 0.7,
+        'num_leaves': 127,
+        'max_depth': 8,
+        'seed': seed,
+        'bagging_freq': 1,
+        'n_jobs': 4
     }
 
-    clf = XGBClassifier(**params)
-    clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
-    f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-    f_imp.to_csv("xgb_feature_importance.csv")
+    # Fit the model
+    clf = lgb.train(params=lgb_params, train_set=dtrain, num_boost_round=200, categorical_feature=categorical_feats)
+
+    # Get feature importances
+    imp_df = pd.DataFrame()
+    imp_df["feature"] = list(train_features)
+    imp_df["importance_gain"] = clf.feature_importance(importance_type='gain')
+    imp_df["importance_split"] = clf.feature_importance(importance_type='split')
+    imp_df['trn_score'] = roc_auc_score(y, clf.predict(data[train_features]))
+
+    return imp_df
+
+# Seed the unexpected randomness of this world
+np.random.seed(123)
+# Get the actual importance, i.e. without shuffling
+actual_imp_df = get_feature_importances(data=train_data, shuffle=False)
+
+null_imp_df = pd.DataFrame()
+nb_runs = 80
+import time
+start = time.time()
+dsp = ''
+for i in range(nb_runs):
+    # Get current run importances
+    imp_df = get_feature_importances(data=data, shuffle=True)
+    imp_df['run'] = i + 1
+    # Concat the latest importances with the old ones
+    null_imp_df = pd.concat([null_imp_df, imp_df], axis=0)
+    # Erase previous message
+    for l in range(len(dsp)):
+        print('\b', end='', flush=True)
+    # Display current run and time used
+    spent = (time.time() - start) / 60
+    dsp = 'Done with %4d of %4d (Spent %5.1f min)' % (i + 1, nb_runs, spent)
+    print(dsp, end='', flush=True)
+
+null_imp_df.to_csv('null_importances_distribution_rf.csv')
+actual_imp_df.to_csv('actual_importances_ditribution_rf.csv')
+
+feature_scores = []
+for _f in actual_imp_df['feature'].unique():
+    f_null_imps_gain = null_imp_df.loc[null_imp_df['feature'] == _f, 'importance_gain'].values
+    f_act_imps_gain = actual_imp_df.loc[actual_imp_df['feature'] == _f, 'importance_gain'].mean()
+    gain_score = np.log(1e-10 + f_act_imps_gain / (1 + np.percentile(f_null_imps_gain, 75)))  # Avoid didvide by zero
+    f_null_imps_split = null_imp_df.loc[null_imp_df['feature'] == _f, 'importance_split'].values
+    f_act_imps_split = actual_imp_df.loc[actual_imp_df['feature'] == _f, 'importance_split'].mean()
+    split_score = np.log(1e-10 + f_act_imps_split / (1 + np.percentile(f_null_imps_split, 75)))  # Avoid didvide by zero
+    feature_scores.append((_f, split_score, gain_score))
+
+scores_df = pd.DataFrame(feature_scores, columns=['feature', 'split_score', 'gain_score'])
+scores_df.to_csv("feature_scored_df.csv")
+
+correlation_scores = []
+for _f in actual_imp_df['feature'].unique():
+    f_null_imps = null_imp_df.loc[null_imp_df['feature'] == _f, 'importance_gain'].values
+    f_act_imps = actual_imp_df.loc[actual_imp_df['feature'] == _f, 'importance_gain'].values
+    gain_score = 100 * (f_null_imps < np.percentile(f_act_imps, 25)).sum() / f_null_imps.size
+    f_null_imps = null_imp_df.loc[null_imp_df['feature'] == _f, 'importance_split'].values
+    f_act_imps = actual_imp_df.loc[actual_imp_df['feature'] == _f, 'importance_split'].values
+    split_score = 100 * (f_null_imps < np.percentile(f_act_imps, 25)).sum() / f_null_imps.size
+    correlation_scores.append((_f, split_score, gain_score))
+
+corr_scores_df = pd.DataFrame(correlation_scores, columns=['feature', 'split_score', 'gain_score'])
+corr_scores_df.to_csv("feature_corr_scores_df")
