@@ -687,9 +687,9 @@ print( 'Saving results...' )
 train = pd.DataFrame()
 train['SK_ID_CURR'] = df[training]['SK_ID_CURR']
 train['TARGET'] = test_pred_proba
-sub[['SK_ID_CURR', 'TARGET']].to_csv('train_nn.csv', index= False)
+train[['SK_ID_CURR', 'TARGET']].to_csv('train_nn_500features.csv', index= False)
 
 sub = pd.DataFrame()
 sub['SK_ID_CURR'] = df[testing]['SK_ID_CURR']
 sub['TARGET'] = sub_preds
-sub[['SK_ID_CURR', 'TARGET']].to_csv('sub_nn.csv', index= False)
+sub[['SK_ID_CURR', 'TARGET']].to_csv('sub_nn_500features.csv', index= False)
