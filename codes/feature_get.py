@@ -531,7 +531,7 @@ def get_feature_importances(data, shuffle, seed=None):
     }
 
     # Fit the model
-    clf = lgb.train(params=lgb_params, train_set=dtrain, num_boost_round=200, categorical_feature=categorical_feats)
+    clf = lgb.train(params=lgb_params, train_set=dtrain, num_boost_round=200)
 
     # Get feature importances
     imp_df = pd.DataFrame()
