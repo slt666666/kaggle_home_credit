@@ -499,13 +499,16 @@ def clean_data(data):
     top200_xgb_f = xgb_features.sort_values(by=1, ascending=False)[0:200][0]
 
     lgb_f = lgb_features.sort_values(by=1, ascending=False)[0:746][0]
-    top200_lgb_f = lgb_features.sort_values(by=1, ascending=False)[0:200][0]
+    # top200_lgb_f = lgb_features.sort_values(by=1, ascending=False)[0:200][0]
+    score_lgb = lgb_features.sort_values(by=1, ascending=False)[1]
+    over2_lgb_f = lgb_features.loc[score_lgb[score_lgb > 1].index, 0]
 
     xgb_f = set(xgb_f)
     lgb_f = set(lgb_f)
     matched_list = list(xgb_f & lgb_f)
     matched_list.extend(top200_xgb_f)
-    matched_list.extend(top200_lgb_f)
+    # matched_list.extend(top200_lgb_f)
+    matched_list.extend(over2_lgb_f)
     matched_list = set(matched_list)
 
     data = data[['SK_ID_CURR', 'TARGET'] + matched_list]
