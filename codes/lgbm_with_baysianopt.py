@@ -493,80 +493,97 @@ def corr_feature_with_target(feature, target):
 def clean_data(data):
     warnings.simplefilter(action = 'ignore')
 
-    # Removing empty features
-    nun = data.nunique()
-    empty = list(nun[nun <= 1].index)
+    xgb_features = pd.read_csv("../features/xgb_feature_importance.csv", header=None)
+    lgb_features = pd.read_csv("../features/lgbm_feature_importance.csv", header=None)
+    xgb_f = xgb_features.sort_values(by=1, ascending=False)[0:700][0]
+    top200_xgb_f = xgb_features.sort_values(by=1, ascending=False)[0:200][0]
 
-    data.drop(empty, axis = 1, inplace = True)
-    print('After removing empty features there are {0:d} features'.format(data.shape[1]))
+    lgb_f = lgb_features.sort_values(by=1, ascending=False)[0:746][0]
+    top200_lgb_f = lgb_features.sort_values(by=1, ascending=False)[0:200][0]
 
-    # Get features by PCA
-    PCA_base_features = data.drop('TARGET', axis = 1)
-    PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
-    pca = PCA()
-    pca.fit(PCA_base_features)
-    transformed = pca.fit_transform(PCA_base_features)
-    top10_PCA_component = transformed[:, 0:20]
-    print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:20]))
+    xgb_f = set(xgb_f)
+    lgb_f = set(lgb_f)
+    matched_list = list(xgb_f & lgb_f)
+    matched_list.extend(top200_xgb_f)
+    matched_list.extend(top200_lgb_f)
+    matched_list = set(matched_list)
 
-    # Removing features with the same distribution on 0 and 1 classes
-    corr = pd.DataFrame(index = ['diff', 'p'])
-    ind = data[data['TARGET'].notnull()].index
+    data = data[['SK_ID_CURR', 'TARGET'] + matched_list]
 
-    for c in data.columns.drop('TARGET'):
-        corr[c] = corr_feature_with_target(data.loc[ind, c], data.loc[ind, 'TARGET'])
+    # # Removing empty features
+    # nun = data.nunique()
+    # empty = list(nun[nun <= 1].index)
+    #
+    # data.drop(empty, axis = 1, inplace = True)
+    # print('After removing empty features there are {0:d} features'.format(data.shape[1]))
 
-    corr = corr.T
-    corr['diff_norm'] = abs(corr['diff'] / data.mean(axis = 0))
+    # # Get features by PCA
+    # PCA_base_features = data.drop('TARGET', axis = 1)
+    # PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
+    # pca = PCA()
+    # pca.fit(PCA_base_features)
+    # transformed = pca.fit_transform(PCA_base_features)
+    # top10_PCA_component = transformed[:, 0:20]
+    # print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:20]))
 
-    to_del_1 = corr[((corr['diff'] == 0) & (corr['p'] > .05))].index
-    to_del_2 = corr[((corr['diff_norm'] < .5) & (corr['p'] > .05))].drop(to_del_1).index
-    to_del = list(to_del_1) + list(to_del_2)
-    if 'SK_ID_CURR' in to_del:
-        to_del.remove('SK_ID_CURR')
+    # # Removing features with the same distribution on 0 and 1 classes
+    # corr = pd.DataFrame(index = ['diff', 'p'])
+    # ind = data[data['TARGET'].notnull()].index
+    #
+    # for c in data.columns.drop('TARGET'):
+    #     corr[c] = corr_feature_with_target(data.loc[ind, c], data.loc[ind, 'TARGET'])
+    #
+    # corr = corr.T
+    # corr['diff_norm'] = abs(corr['diff'] / data.mean(axis = 0))
+    #
+    # to_del_1 = corr[((corr['diff'] == 0) & (corr['p'] > .05))].index
+    # to_del_2 = corr[((corr['diff_norm'] < .5) & (corr['p'] > .05))].drop(to_del_1).index
+    # to_del = list(to_del_1) + list(to_del_2)
+    # if 'SK_ID_CURR' in to_del:
+    #     to_del.remove('SK_ID_CURR')
+    #
+    # data.drop(to_del, axis = 1, inplace = True)
+    # print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
+    #
+    # # Removing features with not the same distribution on train and test datasets
+    # corr_test = pd.DataFrame(index = ['diff', 'p'])
+    # target = data['TARGET'].notnull().astype(int)
+    #
+    # for c in data.columns.drop('TARGET'):
+    #     corr_test[c] = corr_feature_with_target(data[c], target)
+    #
+    # corr_test = corr_test.T
+    # corr_test['diff_norm'] = abs(corr_test['diff'] / data.mean(axis = 0))
+    #
+    # bad_features = corr_test[((corr_test['p'] < .05) & (corr_test['diff_norm'] > 1))].index
+    # bad_features = corr.loc[bad_features][corr['diff_norm'] == 0].index
+    #
+    # data.drop(bad_features, axis = 1, inplace = True)
+    # print('After removing features with not the same distribution on train and test datasets there are {0:d} features'.format(data.shape[1]))
+    #
+    # del corr, corr_test
+    # gc.collect()
+    #
+    # # Removing features not interesting for classifier
+    # clf = LGBMClassifier(random_state = 0)
+    # train_index = data[data['TARGET'].notnull()].index
+    # train_columns = data.drop('TARGET', axis = 1).columns
+    #
+    # score = 1
+    # new_columns = []
+    # while score > .75:
+    #     train_columns = train_columns.drop(new_columns)
+    #     clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
+    #     f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+    #     score = roc_auc_score(data.loc[train_index, 'TARGET'],
+    #                           clf.predict_proba(data.loc[train_index, train_columns])[:, 1])
+    #     new_columns = f_imp[f_imp > 0].index
+    #
+    # data.drop(train_columns, axis = 1, inplace = True)
+    # print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
-    data.drop(to_del, axis = 1, inplace = True)
-    print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
-
-    # Removing features with not the same distribution on train and test datasets
-    corr_test = pd.DataFrame(index = ['diff', 'p'])
-    target = data['TARGET'].notnull().astype(int)
-
-    for c in data.columns.drop('TARGET'):
-        corr_test[c] = corr_feature_with_target(data[c], target)
-
-    corr_test = corr_test.T
-    corr_test['diff_norm'] = abs(corr_test['diff'] / data.mean(axis = 0))
-
-    bad_features = corr_test[((corr_test['p'] < .05) & (corr_test['diff_norm'] > 1))].index
-    bad_features = corr.loc[bad_features][corr['diff_norm'] == 0].index
-
-    data.drop(bad_features, axis = 1, inplace = True)
-    print('After removing features with not the same distribution on train and test datasets there are {0:d} features'.format(data.shape[1]))
-
-    del corr, corr_test
-    gc.collect()
-
-    # Removing features not interesting for classifier
-    clf = LGBMClassifier(random_state = 0)
-    train_index = data[data['TARGET'].notnull()].index
-    train_columns = data.drop('TARGET', axis = 1).columns
-
-    score = 1
-    new_columns = []
-    while score > .75:
-        train_columns = train_columns.drop(new_columns)
-        clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
-        f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-        score = roc_auc_score(data.loc[train_index, 'TARGET'],
-                              clf.predict_proba(data.loc[train_index, train_columns])[:, 1])
-        new_columns = f_imp[f_imp > 0].index
-
-    data.drop(train_columns, axis = 1, inplace = True)
-    print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
-
-    for i in range(20):
-        data["PCA_" + str(i)] = top10_PCA_component[:, i]
+    # for i in range(20):
+    #     data["PCA_" + str(i)] = top10_PCA_component[:, i]
 
     return data
 
