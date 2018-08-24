@@ -292,7 +292,7 @@ def previous_application(file_path = file_path, nan_as_category = True):
     df_train = df_train[['SK_ID_CURR', 'TARGET']]
     categorical_features = df_prev.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
     for i in categorical_features.index:
-        df_cate = prev_app[['SK_ID_CURR', i]]
+        df_cate = df_prev[['SK_ID_CURR', i]]
         merge_data = pd.merge(df_train, df_cate, on='SK_ID_CURR', how='right')
         merge_data = merge_data[merge_data['TARGET'].notnull()]
         cate = merge_data[['TARGET', i]].groupby(i).mean()
