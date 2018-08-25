@@ -496,10 +496,10 @@ def clean_data(data):
     # Get features by PCA
     PCA_base_features = data.drop('TARGET', axis = 1)
     PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
-    pca = PCA()
+    pca = PCA(10)
     pca.fit(PCA_base_features)
     transformed = pca.fit_transform(PCA_base_features)
-    top20_PCA_component = transformed[:, 0:2]
+    top20_PCA_component = transformed[:, 0:10]
     print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:2]))
     del PCA_base_features, pca, transformed
     gc.collect()
@@ -563,7 +563,7 @@ def clean_data(data):
     data.drop(train_columns, axis = 1, inplace = True)
     print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
-    for i in range(2):
+    for i in range(10):
         data["PCA_" + str(i)] = top20_PCA_component[:, i]
 
     return data
