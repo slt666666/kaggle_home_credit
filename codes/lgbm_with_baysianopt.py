@@ -285,45 +285,28 @@ def previous_application(file_path = file_path, nan_as_category = True):
     df_prev['prev DAYS_TERMINATION less -500'] = (df_prev['DAYS_TERMINATION'] < -500).astype(int)
 
     # Categorical features with One-Hot encode
-    # df_prev, categorical = one_hot_encoder(df_prev, nan_as_category)
-
-    # Categorical convert to mean_num!!
-    df_train = pd.read_csv(file_path + 'application_train.csv')
-    df_train = df_train[['SK_ID_CURR', 'TARGET']]
-    categorical = df_prev.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
-    for i in categorical.index:
-        df_cate = df_prev[['SK_ID_CURR', i]]
-        merge_data = pd.merge(df_train, df_cate, on='SK_ID_CURR', how='right')
-        merge_data = merge_data[merge_data['TARGET'].notnull()]
-        cate = merge_data[['TARGET', i]].groupby(i).mean()
-        df_prev[i] = df_prev[i].replace(cate['TARGET'].to_dict())
-    for i in df_prev.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0).index:
-        for j in df_prev[i]:
-            if type(j) is str:
-                df_prev[i] = df_prev[i].replace(j, np.nan)
-    del df_train
-    gc.collect()
+    df_prev, categorical = one_hot_encoder(df_prev, nan_as_category)
 
     # Aggregations for application set
     aggregations = {}
     for col in df_prev.columns:
-        aggregations[col] = ['mean'] if col in categorical.index else ['min', 'max', 'size', 'mean', 'var', 'sum']
+        aggregations[col] = ['mean'] if col in categorical else ['min', 'max', 'size', 'mean', 'var', 'sum']
     df_prev_agg = df_prev.groupby('SK_ID_CURR').agg(aggregations)
     df_prev_agg.columns = pd.Index(['PREV_' + e[0] + "_" + e[1].upper() for e in df_prev_agg.columns.tolist()])
 
-    # # Previous Applications: Approved Applications
-    # approved_agg = df_prev[df_prev['NAME_CONTRACT_STATUS_Approved'] == 1].groupby('SK_ID_CURR').agg(aggregations)
-    # approved_agg.columns = pd.Index(['APPROVED_' + e[0] + "_" + e[1].upper() for e in approved_agg.columns.tolist()])
-    # df_prev_agg = df_prev_agg.join(approved_agg, how = 'left')
-    # del approved_agg
-    # gc.collect()
-    #
-    # # Previous Applications: Refused Applications
-    # refused_agg = df_prev[df_prev['NAME_CONTRACT_STATUS_Refused'] == 1].groupby('SK_ID_CURR').agg(aggregations)
-    # refused_agg.columns = pd.Index(['REFUSED_' + e[0] + "_" + e[1].upper() for e in refused_agg.columns.tolist()])
-    # df_prev_agg = df_prev_agg.join(refused_agg, how = 'left')
-    # del refused_agg, df_prev
-    # gc.collect()
+    # Previous Applications: Approved Applications
+    approved_agg = df_prev[df_prev['NAME_CONTRACT_STATUS_Approved'] == 1].groupby('SK_ID_CURR').agg(aggregations)
+    approved_agg.columns = pd.Index(['APPROVED_' + e[0] + "_" + e[1].upper() for e in approved_agg.columns.tolist()])
+    df_prev_agg = df_prev_agg.join(approved_agg, how = 'left')
+    del approved_agg
+    gc.collect()
+
+    # Previous Applications: Refused Applications
+    refused_agg = df_prev[df_prev['NAME_CONTRACT_STATUS_Refused'] == 1].groupby('SK_ID_CURR').agg(aggregations)
+    refused_agg.columns = pd.Index(['REFUSED_' + e[0] + "_" + e[1].upper() for e in refused_agg.columns.tolist()])
+    df_prev_agg = df_prev_agg.join(refused_agg, how = 'left')
+    del refused_agg, df_prev
+    gc.collect()
 
     return reduce_mem_usage(df_prev_agg)
 
@@ -521,25 +504,11 @@ def clean_data(data):
     del PCA_base_features, pca, transformed
     gc.collect()
 
-    # xgb_features = pd.read_csv("../features/xgb_feature_importance.csv", header=None)
-    # lgb_features = pd.read_csv("../features/lgbm_feature_importance.csv", header=None)
-    # xgb_f = xgb_features.sort_values(by=1, ascending=False)[0:700][0]
-    # top200_xgb_f = xgb_features.sort_values(by=1, ascending=False)[0:200][0]
-    #
-    # lgb_f = lgb_features.sort_values(by=1, ascending=False)[0:746][0]
-    # # top200_lgb_f = lgb_features.sort_values(by=1, ascending=False)[0:200][0]
-    # score_lgb = lgb_features.sort_values(by=1, ascending=False)[1]
-    # # over2_lgb_f = lgb_features.loc[score_lgb[score_lgb > 1].index, 0]
-
-    # xgb_f = set(xgb_f)
-    # lgb_f = set(lgb_f)
-    # matched_list = list(xgb_f & lgb_f)
-    # # matched_list.extend(top200_xgb_f)
-    # # matched_list.extend(top200_lgb_f)
-    # # matched_list.extend(over2_lgb_f)
-    # # matched_list = set(matched_list)
-    #
-    # data = data[['SK_ID_CURR', 'TARGET'] + matched_list]
+    feature = pd.read_csv("./features/feature_scored_df.csv", index_col=0)
+    feature = feature.sort_values(by='gain_score', ascending=False)
+    feature = feature[feature["gain_score"] > 1]
+    feature = list(feature["feature"])
+    data = data[['SK_ID_CURR', 'TARGET'] + feature]
 
     # Removing empty features
     nun = data.nunique()
@@ -707,23 +676,21 @@ scores_index = [
 
 scores = pd.DataFrame(index = scores_index)
 
-
 lgbm_params = {
-            'nthread': 8,
-            'n_estimators': 10000,
-            'learning_rate': .02,
-            'num_leaves': 34,
-            'colsample_bytree': .9497036,
-            'subsample': .8715623,
-            'max_depth': 8,
-            'reg_alpha': .041545473,
-            'reg_lambda': .0735294,
-            'min_split_gain': .0222415,
-            'min_child_weight': 39.3259775,
-            'silent': -1,
-            'verbose': -1
+    'nthread': 8,
+    'n_estimators': 10000,
+    'colsample_bytree': 0.6062533757928202,
+    'learning_rate': 0.010417867211885186,
+    'num_leaves': 30,
+    'subsample': 0.9147241775305226,
+    'max_depth': 7,
+    'reg_alpha': 0.07860113928467227,
+    'reg_lambda': 0.060046244507381386,
+    'min_split_gain': 0.029065783508116658,
+    'min_child_weight': 39.69965950255416,
+    'silent': -1,
+    'verbose': -1
 }
-
 
 feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_name = 'prediction_0.csv')
 
