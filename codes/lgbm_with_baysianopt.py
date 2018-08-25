@@ -285,25 +285,29 @@ def previous_application(file_path = file_path, nan_as_category = True):
     df_prev['prev DAYS_TERMINATION less -500'] = (df_prev['DAYS_TERMINATION'] < -500).astype(int)
 
     # Categorical features with One-Hot encode
-    df_prev, categorical = one_hot_encoder(df_prev, nan_as_category)
+    # df_prev, categorical = one_hot_encoder(df_prev, nan_as_category)
 
-    # # Categorical convert to mean_num!!
-    # df_train = pd.read_csv(file_path + 'application_train.csv')
-    # df_train = df_train[['SK_ID_CURR', 'TARGET']]
-    # categorical = df_prev.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
-    # for i in categorical.index:
-    #     df_cate = df_prev[['SK_ID_CURR', i]]
-    #     merge_data = pd.merge(df_train, df_cate, on='SK_ID_CURR', how='right')
-    #     merge_data = merge_data[merge_data['TARGET'].notnull()]
-    #     cate = merge_data[['TARGET', i]].groupby(i).mean()
-    #     df_prev[i] = df_prev[i].replace(cate['TARGET'].to_dict())
-    # del df_train
-    # gc.collect()
+    # Categorical convert to mean_num!!
+    df_train = pd.read_csv(file_path + 'application_train.csv')
+    df_train = df_train[['SK_ID_CURR', 'TARGET']]
+    categorical = df_prev.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
+    for i in categorical.index:
+        df_cate = df_prev[['SK_ID_CURR', i]]
+        merge_data = pd.merge(df_train, df_cate, on='SK_ID_CURR', how='right')
+        merge_data = merge_data[merge_data['TARGET'].notnull()]
+        cate = merge_data[['TARGET', i]].groupby(i).mean()
+        df_prev[i] = df_prev[i].replace(cate['TARGET'].to_dict())
+    for i in df_prev.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0).index:
+        for j in prev_app[i]:
+            if type(j) is str:
+                df_prev[i] = df_prev[i].replace(j, np.nan)
+    del df_train
+    gc.collect()
 
     # Aggregations for application set
     aggregations = {}
     for col in df_prev.columns:
-        aggregations[col] = ['mean'] if col in categorical else ['min', 'max', 'size', 'mean', 'var', 'sum']
+        aggregations[col] = ['mean'] if col in categorical.index else ['min', 'max', 'size', 'mean', 'var', 'sum']
     df_prev_agg = df_prev.groupby('SK_ID_CURR').agg(aggregations)
     df_prev_agg.columns = pd.Index(['PREV_' + e[0] + "_" + e[1].upper() for e in df_prev_agg.columns.tolist()])
 
@@ -719,21 +723,7 @@ lgbm_params = {
             'silent': -1,
             'verbose': -1
 }
-lgbm_params = {
-    'nthread': 8,
-    'n_estimators': 10000,
-    'colsample_bytree': 0.6062533757928202,
-    'learning_rate': 0.010417867211885186,
-    'num_leaves': 30,
-    'subsample': 0.9147241775305226,
-    'max_depth': 7,
-    'reg_alpha': 0.07860113928467227,
-    'reg_lambda': 0.060046244507381386,
-    'min_split_gain': 0.029065783508116658,
-    'min_child_weight': 39.69965950255416,
-    'silent': -1,
-    'verbose': -1
-}
+
 
 feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_name = 'prediction_0.csv')
 
