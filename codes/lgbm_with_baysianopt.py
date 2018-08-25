@@ -298,7 +298,7 @@ def previous_application(file_path = file_path, nan_as_category = True):
         cate = merge_data[['TARGET', i]].groupby(i).mean()
         df_prev[i] = df_prev[i].replace(cate['TARGET'].to_dict())
     for i in df_prev.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0).index:
-        for j in prev_app[i]:
+        for j in df_prev[i]:
             if type(j) is str:
                 df_prev[i] = df_prev[i].replace(j, np.nan)
     del df_train
