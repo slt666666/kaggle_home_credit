@@ -700,7 +700,7 @@ def lgbm_evaluate(**params):
     params['num_leaves'] = int(params['num_leaves'])
     params['max_depth'] = int(params['max_depth'])
 
-    clf = LGBMClassifier(**params, n_estimators = 10000, nthread = 32)
+    clf = LGBMClassifier(**params, n_estimators = 10000, nthread = 24)
 
     train_df = df[df['TARGET'].notnull()]
     test_df = df[df['TARGET'].isnull()]
@@ -736,7 +736,7 @@ params = {'colsample_bytree': (0.2, 0.8),
           'min_split_gain': (.01, .03),
           'min_child_weight': (34, 50)}
 bo = BayesianOptimization(lgbm_evaluate, params)
-bo.maximize(init_points = 5, n_iter = 10)
+bo.maximize(init_points = 5, n_iter = 50)
 best_params = bo.res['max']['max_params']
 best_params['num_leaves'] = int(best_params['num_leaves'])
 best_params['max_depth'] = int(best_params['max_depth'])
