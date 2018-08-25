@@ -562,7 +562,7 @@ def clean_data(data):
         new_columns.extend(f_imp[f_imp > 1].index)
 
     new_columns = list(set(new_columns))
-    data = data[['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']+ new_columns]
+    data = data[['TARGET','SK_ID_CURR']+ new_columns]
     print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
     # for i in range(10):
