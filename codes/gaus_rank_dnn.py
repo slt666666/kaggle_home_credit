@@ -526,49 +526,49 @@ def clean_data(data):
     data.drop(to_del, axis = 1, inplace = True)
     print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
 
-    # Removing features with not the same distribution on train and test datasets
-    corr_test = pd.DataFrame(index = ['diff', 'p'])
-    target = data['TARGET'].notnull().astype(int)
-
-    for c in data.columns.drop('TARGET'):
-        corr_test[c] = corr_feature_with_target(data[c], target)
-
-    corr_test = corr_test.T
-    corr_test['diff_norm'] = abs(corr_test['diff'] / data.mean(axis = 0))
-
-    bad_features = corr_test[((corr_test['p'] < .05) & (corr_test['diff_norm'] > 1))].index
-    bad_features = corr.loc[bad_features][corr['diff_norm'] == 0].index
-
-    data.drop(bad_features, axis = 1, inplace = True)
-    print('After removing features with not the same distribution on train and test datasets there are {0:d} features'.format(data.shape[1]))
-
-    del corr, corr_test
-    gc.collect()
+    # # Removing features with not the same distribution on train and test datasets
+    # corr_test = pd.DataFrame(index = ['diff', 'p'])
+    # target = data['TARGET'].notnull().astype(int)
+    #
+    # for c in data.columns.drop('TARGET'):
+    #     corr_test[c] = corr_feature_with_target(data[c], target)
+    #
+    # corr_test = corr_test.T
+    # corr_test['diff_norm'] = abs(corr_test['diff'] / data.mean(axis = 0))
+    #
+    # bad_features = corr_test[((corr_test['p'] < .05) & (corr_test['diff_norm'] > 1))].index
+    # bad_features = corr.loc[bad_features][corr['diff_norm'] == 0].index
+    #
+    # data.drop(bad_features, axis = 1, inplace = True)
+    # print('After removing features with not the same distribution on train and test datasets there are {0:d} features'.format(data.shape[1]))
+    #
+    # del corr, corr_test
+    # gc.collect()
 
     # Get features by PCA
-    PCA_base_features = data.drop('TARGET', axis = 1)
-    PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
-    pca = PCA()
-    pca.fit(PCA_base_features)
-    transformed = pca.fit_transform(PCA_base_features)
-    top10_PCA_component = transformed[:, 0:10]
-    print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:10]))
+    # PCA_base_features = data.drop('TARGET', axis = 1)
+    # PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
+    # pca = PCA()
+    # pca.fit(PCA_base_features)
+    # transformed = pca.fit_transform(PCA_base_features)
+    # top10_PCA_component = transformed[:, 0:10]
+    # print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:10]))
 
-    # Removing features not interesting for classifier
-    clf = LGBMClassifier(random_state = 0)
-    train_index = data[data['TARGET'].notnull()].index
-    train_columns = data.drop('TARGET', axis = 1).columns
-    new_columns = []
-    clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
-    f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-    new_columns = f_imp.sort_values(ascending=False).index[0:500]
-    train_columns = train_columns.drop(new_columns)
+    # # Removing features not interesting for classifier
+    # clf = LGBMClassifier(random_state = 0)
+    # train_index = data[data['TARGET'].notnull()].index
+    # train_columns = data.drop('TARGET', axis = 1).columns
+    # new_columns = []
+    # clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
+    # f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+    # new_columns = f_imp.sort_values(ascending=False).index[0:500]
+    # train_columns = train_columns.drop(new_columns)
+    #
+    # data.drop(train_columns, axis = 1, inplace = True)
+    # print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
-    data.drop(train_columns, axis = 1, inplace = True)
-    print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
-
-    for i in range(10):
-        data["PCA_" + str(i)] = top10_PCA_component[:, i]
+    # for i in range(10):
+    #     data["PCA_" + str(i)] = top10_PCA_component[:, i]
 
     return data
 
@@ -640,7 +640,7 @@ class roc_callback(Callback):
     def on_batch_end(self, batch, logs={}):
         return
 
-folds = KFold(n_splits=5, shuffle=True, random_state=42)
+folds = KFold(n_splits=10, shuffle=True, random_state=42)
 
 test_pred_proba = np.zeros(X_train.shape[0])
 sub_preds = np.zeros(X_test.shape[0])
@@ -687,9 +687,9 @@ print( 'Saving results...' )
 train = pd.DataFrame()
 train['SK_ID_CURR'] = df[training]['SK_ID_CURR']
 train['TARGET'] = test_pred_proba
-train[['SK_ID_CURR', 'TARGET']].to_csv('train_nn_500features.csv', index= False)
+train[['SK_ID_CURR', 'TARGET']].to_csv('train_nn_all_features.csv', index= False)
 
 sub = pd.DataFrame()
 sub['SK_ID_CURR'] = df[testing]['SK_ID_CURR']
 sub['TARGET'] = sub_preds
-sub[['SK_ID_CURR', 'TARGET']].to_csv('sub_nn_500features.csv', index= False)
+sub[['SK_ID_CURR', 'TARGET']].to_csv('sub_nn_all_features.csv', index= False)
