@@ -504,12 +504,6 @@ def clean_data(data):
     del PCA_base_features, pca, transformed
     gc.collect()
 
-    feature = pd.read_csv("../features/feature_scored_df.csv", index_col=0)
-    feature = feature.sort_values(by='gain_score', ascending=False)
-    feature = feature[feature["gain_score"] > 1]
-    feature = list(feature["feature"])
-    data = data[['SK_ID_CURR', 'TARGET'] + feature]
-
     # Removing empty features
     nun = data.nunique()
     empty = list(nun[nun <= 1].index)
@@ -555,19 +549,25 @@ def clean_data(data):
     # del corr, corr_test
     # gc.collect()
 
-    # Removing features not interesting for classifier
-    # clf = LGBMClassifier(random_state = 0)
-    # train_index = data[data['TARGET'].notnull()].index
-    # train_columns = data.drop('TARGET', axis = 1).columns
-    #
-    # new_columns = []
-    # clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
-    # f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-    # new_columns = f_imp[f_imp > 1].index
-    # train_columns = train_columns.drop(new_columns)
-    #
-    # data.drop(train_columns, axis = 1, inplace = True)
-    # print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
+    Removing features not interesting for classifier
+    clf = LGBMClassifier(random_state = 0)
+    train_index = data[data['TARGET'].notnull()].index
+    train_columns = data.drop('TARGET', axis = 1).columns
+
+    new_columns = []
+    clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
+    f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+    new_columns = f_imp[f_imp > 1].index
+    train_columns = train_columns.drop(new_columns)
+
+    data.drop(train_columns, axis = 1, inplace = True)
+    print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
+
+    feature = pd.read_csv("../features/feature_scored_df.csv", index_col=0)
+    feature = feature.sort_values(by='gain_score', ascending=False)
+    feature = feature[feature["gain_score"] > 2]
+    feature = list(feature["feature"])
+    data = data[list(set(list(data.columns) + feature))]
 
     for i in range(20):
         data["PCA_" + str(i)] = top20_PCA_component[:, i]
