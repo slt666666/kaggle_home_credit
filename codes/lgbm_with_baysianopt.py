@@ -549,7 +549,7 @@ def clean_data(data):
     # del corr, corr_test
     # gc.collect()
 
-    Removing features not interesting for classifier
+    # Removing features not interesting for classifier
     clf = LGBMClassifier(random_state = 0)
     train_index = data[data['TARGET'].notnull()].index
     train_columns = data.drop('TARGET', axis = 1).columns
