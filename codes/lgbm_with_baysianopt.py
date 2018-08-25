@@ -311,19 +311,19 @@ def previous_application(file_path = file_path, nan_as_category = True):
     df_prev_agg = df_prev.groupby('SK_ID_CURR').agg(aggregations)
     df_prev_agg.columns = pd.Index(['PREV_' + e[0] + "_" + e[1].upper() for e in df_prev_agg.columns.tolist()])
 
-    # Previous Applications: Approved Applications
-    approved_agg = df_prev[df_prev['NAME_CONTRACT_STATUS_Approved'] == 1].groupby('SK_ID_CURR').agg(aggregations)
-    approved_agg.columns = pd.Index(['APPROVED_' + e[0] + "_" + e[1].upper() for e in approved_agg.columns.tolist()])
-    df_prev_agg = df_prev_agg.join(approved_agg, how = 'left')
-    del approved_agg
-    gc.collect()
-
-    # Previous Applications: Refused Applications
-    refused_agg = df_prev[df_prev['NAME_CONTRACT_STATUS_Refused'] == 1].groupby('SK_ID_CURR').agg(aggregations)
-    refused_agg.columns = pd.Index(['REFUSED_' + e[0] + "_" + e[1].upper() for e in refused_agg.columns.tolist()])
-    df_prev_agg = df_prev_agg.join(refused_agg, how = 'left')
-    del refused_agg, df_prev
-    gc.collect()
+    # # Previous Applications: Approved Applications
+    # approved_agg = df_prev[df_prev['NAME_CONTRACT_STATUS_Approved'] == 1].groupby('SK_ID_CURR').agg(aggregations)
+    # approved_agg.columns = pd.Index(['APPROVED_' + e[0] + "_" + e[1].upper() for e in approved_agg.columns.tolist()])
+    # df_prev_agg = df_prev_agg.join(approved_agg, how = 'left')
+    # del approved_agg
+    # gc.collect()
+    #
+    # # Previous Applications: Refused Applications
+    # refused_agg = df_prev[df_prev['NAME_CONTRACT_STATUS_Refused'] == 1].groupby('SK_ID_CURR').agg(aggregations)
+    # refused_agg.columns = pd.Index(['REFUSED_' + e[0] + "_" + e[1].upper() for e in refused_agg.columns.tolist()])
+    # df_prev_agg = df_prev_agg.join(refused_agg, how = 'left')
+    # del refused_agg, df_prev
+    # gc.collect()
 
     return reduce_mem_usage(df_prev_agg)
 
