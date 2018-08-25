@@ -493,16 +493,16 @@ def corr_feature_with_target(feature, target):
 def clean_data(data):
     warnings.simplefilter(action = 'ignore')
 
-    # Get features by PCA
-    PCA_base_features = data.drop('TARGET', axis = 1)
-    PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
-    pca = PCA(10)
-    pca.fit(PCA_base_features)
-    transformed = pca.fit_transform(PCA_base_features)
-    top20_PCA_component = transformed[:, 0:10]
-    print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:2]))
-    del PCA_base_features, pca, transformed
-    gc.collect()
+    # # Get features by PCA
+    # PCA_base_features = data.drop('TARGET', axis = 1)
+    # PCA_base_features = PCA_base_features.dropna(how='any', axis=1)
+    # pca = PCA(10)
+    # pca.fit(PCA_base_features)
+    # transformed = pca.fit_transform(PCA_base_features)
+    # top20_PCA_component = transformed[:, 0:10]
+    # print("PCA explained_variance_rati: {}".format(pca.explained_variance_ratio_[0:2]))
+    # del PCA_base_features, pca, transformed
+    # gc.collect()
 
     # Removing empty features
     nun = data.nunique()
@@ -554,26 +554,17 @@ def clean_data(data):
     train_index = data[data['TARGET'].notnull()].index
     train_columns = data.drop('TARGET', axis = 1).columns
 
-    # new_columns = []
-    # clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
-    # f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-    # new_columns = f_imp[f_imp > 1].index
-    # train_columns = train_columns.drop(new_columns)
-    #
-    # data.drop(train_columns, axis = 1, inplace = True)
-
     new_columns = []
-    for i in range(5):
-        train_columns = train_columns.drop(new_columns)
-        clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
-        f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-        new_columns = f_imp.sort_values().index[0:100]
+    clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
+    f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+    new_columns = f_imp[f_imp > 1].index
+    train_columns = train_columns.drop(new_columns)
 
     data.drop(train_columns, axis = 1, inplace = True)
     print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
-    for i in range(10):
-        data["PCA_" + str(i)] = top20_PCA_component[:, i]
+    # for i in range(10):
+    #     data["PCA_" + str(i)] = top20_PCA_component[:, i]
 
     return data
 
