@@ -504,7 +504,7 @@ def clean_data(data):
     del PCA_base_features, pca, transformed
     gc.collect()
 
-    feature = pd.read_csv("./features/feature_scored_df.csv", index_col=0)
+    feature = pd.read_csv("../features/feature_scored_df.csv", index_col=0)
     feature = feature.sort_values(by='gain_score', ascending=False)
     feature = feature[feature["gain_score"] > 1]
     feature = list(feature["feature"])
