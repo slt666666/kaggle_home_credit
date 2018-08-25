@@ -274,7 +274,7 @@ def kfold_lightgbm(df, num_folds, stratified = False, debug= False):
 
         # LightGBM parameters found by Bayesian optimization
         clf = LGBMClassifier(
-            nthread=4,
+            nthread=8,
             #is_unbalance=True,
             n_estimators=10000,
             learning_rate=0.02,
