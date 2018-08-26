@@ -511,24 +511,24 @@ def clean_data(data):
     data.drop(empty, axis = 1, inplace = True)
     print('After removing empty features there are {0:d} features'.format(data.shape[1]))
 
-    # Removing features with the same distribution on 0 and 1 classes
-    corr = pd.DataFrame(index = ['diff', 'p'])
-    ind = data[data['TARGET'].notnull()].index
-
-    for c in data.columns.drop('TARGET'):
-        corr[c] = corr_feature_with_target(data.loc[ind, c], data.loc[ind, 'TARGET'])
-
-    corr = corr.T
-    corr['diff_norm'] = abs(corr['diff'] / data.mean(axis = 0))
-
-    to_del_1 = corr[((corr['diff'] == 0) & (corr['p'] > .05))].index
-    to_del_2 = corr[((corr['diff_norm'] < .5) & (corr['p'] > .05))].drop(to_del_1).index
-    to_del = list(to_del_1) + list(to_del_2)
-    if 'SK_ID_CURR' in to_del:
-        to_del.remove('SK_ID_CURR')
-
-    data.drop(to_del, axis = 1, inplace = True)
-    print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
+    # # Removing features with the same distribution on 0 and 1 classes
+    # corr = pd.DataFrame(index = ['diff', 'p'])
+    # ind = data[data['TARGET'].notnull()].index
+    #
+    # for c in data.columns.drop('TARGET'):
+    #     corr[c] = corr_feature_with_target(data.loc[ind, c], data.loc[ind, 'TARGET'])
+    #
+    # corr = corr.T
+    # corr['diff_norm'] = abs(corr['diff'] / data.mean(axis = 0))
+    #
+    # to_del_1 = corr[((corr['diff'] == 0) & (corr['p'] > .05))].index
+    # to_del_2 = corr[((corr['diff_norm'] < .5) & (corr['p'] > .05))].drop(to_del_1).index
+    # to_del = list(to_del_1) + list(to_del_2)
+    # if 'SK_ID_CURR' in to_del:
+    #     to_del.remove('SK_ID_CURR')
+    #
+    # data.drop(to_del, axis = 1, inplace = True)
+    # print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
 
     # # Removing features with not the same distribution on train and test datasets
     # corr_test = pd.DataFrame(index = ['diff', 'p'])
@@ -554,7 +554,7 @@ def clean_data(data):
     train_index = data[data['TARGET'].notnull()].index
     train_columns = data.drop('TARGET', axis = 1).columns
 
-    folds = KFold(n_splits = 3, shuffle = True, random_state = 1024)
+    folds = KFold(n_splits = 5, shuffle = True, random_state = 1024)
     new_columns = []
     for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_index)):
         clf.fit(data.loc[train_index[train_idx], train_columns], data.loc[train_index[train_idx], 'TARGET'])
