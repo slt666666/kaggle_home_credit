@@ -504,6 +504,11 @@ def clean_data(data):
     # del PCA_base_features, pca, transformed
     # gc.collect()
 
+    # get features by Gain Score !!
+    features_score = pd.read_csv("../features/feature_scored_df.csv")
+    feature_score = features_score[features_score["gain_score"] > 0]
+    data = data[list(feature_score["feature"])]
+
     # Removing empty features
     nun = data.nunique()
     empty = list(nun[nun <= 1].index)
@@ -559,7 +564,7 @@ def clean_data(data):
     for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_index)):
         clf.fit(data.loc[train_index[train_idx], train_columns], data.loc[train_index[train_idx], 'TARGET'])
         f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-        new_columns.extend(f_imp[f_imp > 3].index)
+        new_columns.extend(f_imp[f_imp > 2].index)
 
     new_columns = list(set(new_columns))
     data = data[['TARGET','SK_ID_CURR']+ new_columns]
@@ -688,59 +693,59 @@ lgbm_params = {
     'verbose': -1
 }
 
-# feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_name = 'prediction_0.csv')
+feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_name = 'prediction_0.csv')
 
-def lgbm_evaluate(**params):
-    warnings.simplefilter('ignore')
-
-    params['num_leaves'] = int(params['num_leaves'])
-    params['max_depth'] = int(params['max_depth'])
-
-    clf = LGBMClassifier(**params, n_estimators = 10000, nthread = 24)
-
-    train_df = df[df['TARGET'].notnull()]
-    test_df = df[df['TARGET'].isnull()]
-
-    folds = KFold(n_splits = 2, shuffle = True, random_state = 1001)
-
-    test_pred_proba = np.zeros(train_df.shape[0])
-
-    feats = [f for f in train_df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
-
-    for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_df[feats], train_df['TARGET'])):
-        train_x, train_y = train_df[feats].iloc[train_idx], train_df['TARGET'].iloc[train_idx]
-        valid_x, valid_y = train_df[feats].iloc[valid_idx], train_df['TARGET'].iloc[valid_idx]
-
-        clf.fit(train_x, train_y,
-                eval_set = [(train_x, train_y), (valid_x, valid_y)], eval_metric = 'auc',
-                verbose = False, early_stopping_rounds = 100)
-
-        test_pred_proba[valid_idx] = clf.predict_proba(valid_x, num_iteration = clf.best_iteration_)[:, 1]
-
-        del train_x, train_y, valid_x, valid_y
-        gc.collect()
-
-    return roc_auc_score(train_df['TARGET'], test_pred_proba)
-
-params = {'colsample_bytree': (0.2, 0.8),
-          'learning_rate': (.005, .015),
-          'num_leaves': (24, 36),
-          'subsample': (0.8, 1),
-          'max_depth': (5, 9),
-          'reg_alpha': (.05, .1),
-          'reg_lambda': (.02, .08),
-          'min_split_gain': (.01, .03),
-          'min_child_weight': (34, 50)}
-bo = BayesianOptimization(lgbm_evaluate, params)
-bo.maximize(init_points = 5, n_iter = 40)
-best_params = bo.res['max']['max_params']
-best_params['num_leaves'] = int(best_params['num_leaves'])
-best_params['max_depth'] = int(best_params['max_depth'])
-print(bo.res['max']['max_params'])
-
-best_params['verbose'] = -1
-best_params['silent'] = -1
-best_params['n_estimators'] = 10000
-best_params['nthread'] = 24
-feature_importance, scor = cv_scores(df, 5, best_params, test_prediction_file_name = 'prediction_1.csv')
-print(scor)
+# def lgbm_evaluate(**params):
+#     warnings.simplefilter('ignore')
+#
+#     params['num_leaves'] = int(params['num_leaves'])
+#     params['max_depth'] = int(params['max_depth'])
+#
+#     clf = LGBMClassifier(**params, n_estimators = 10000, nthread = 24)
+#
+#     train_df = df[df['TARGET'].notnull()]
+#     test_df = df[df['TARGET'].isnull()]
+#
+#     folds = KFold(n_splits = 2, shuffle = True, random_state = 1001)
+#
+#     test_pred_proba = np.zeros(train_df.shape[0])
+#
+#     feats = [f for f in train_df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
+#
+#     for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_df[feats], train_df['TARGET'])):
+#         train_x, train_y = train_df[feats].iloc[train_idx], train_df['TARGET'].iloc[train_idx]
+#         valid_x, valid_y = train_df[feats].iloc[valid_idx], train_df['TARGET'].iloc[valid_idx]
+#
+#         clf.fit(train_x, train_y,
+#                 eval_set = [(train_x, train_y), (valid_x, valid_y)], eval_metric = 'auc',
+#                 verbose = False, early_stopping_rounds = 100)
+#
+#         test_pred_proba[valid_idx] = clf.predict_proba(valid_x, num_iteration = clf.best_iteration_)[:, 1]
+#
+#         del train_x, train_y, valid_x, valid_y
+#         gc.collect()
+#
+#     return roc_auc_score(train_df['TARGET'], test_pred_proba)
+#
+# params = {'colsample_bytree': (0.2, 0.8),
+#           'learning_rate': (.005, .015),
+#           'num_leaves': (24, 36),
+#           'subsample': (0.8, 1),
+#           'max_depth': (5, 9),
+#           'reg_alpha': (.05, .1),
+#           'reg_lambda': (.02, .08),
+#           'min_split_gain': (.01, .03),
+#           'min_child_weight': (34, 50)}
+# bo = BayesianOptimization(lgbm_evaluate, params)
+# bo.maximize(init_points = 5, n_iter = 40)
+# best_params = bo.res['max']['max_params']
+# best_params['num_leaves'] = int(best_params['num_leaves'])
+# best_params['max_depth'] = int(best_params['max_depth'])
+# print(bo.res['max']['max_params'])
+#
+# best_params['verbose'] = -1
+# best_params['silent'] = -1
+# best_params['n_estimators'] = 10000
+# best_params['nthread'] = 24
+# feature_importance, scor = cv_scores(df, 5, best_params, test_prediction_file_name = 'prediction_1.csv')
+# print(scor)
