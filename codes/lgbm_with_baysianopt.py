@@ -554,12 +554,12 @@ def clean_data(data):
     train_index = data[data['TARGET'].notnull()].index
     train_columns = data.drop('TARGET', axis = 1).columns
 
-    folds = KFold(n_splits = 5, shuffle = True, random_state = 1024)
+    folds = KFold(n_splits = 3, shuffle = True, random_state = 1024)
     new_columns = []
     for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_index)):
         clf.fit(data.loc[train_index[train_idx], train_columns], data.loc[train_index[train_idx], 'TARGET'])
         f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-        new_columns.extend(f_imp[f_imp > 4].index)
+        new_columns.extend(f_imp[f_imp > 3].index)
 
     new_columns = list(set(new_columns))
     data = data[['TARGET','SK_ID_CURR']+ new_columns]
