@@ -505,30 +505,30 @@ def clean_data(data):
     # gc.collect()
 
     # Removing empty features
-    # nun = data.nunique()
-    # empty = list(nun[nun <= 1].index)
-    #
-    # data.drop(empty, axis = 1, inplace = True)
-    # print('After removing empty features there are {0:d} features'.format(data.shape[1]))
-    #
-    # # Removing features with the same distribution on 0 and 1 classes
-    # corr = pd.DataFrame(index = ['diff', 'p'])
-    # ind = data[data['TARGET'].notnull()].index
-    #
-    # for c in data.columns.drop('TARGET'):
-    #     corr[c] = corr_feature_with_target(data.loc[ind, c], data.loc[ind, 'TARGET'])
-    #
-    # corr = corr.T
-    # corr['diff_norm'] = abs(corr['diff'] / data.mean(axis = 0))
-    #
-    # to_del_1 = corr[((corr['diff'] == 0) & (corr['p'] > .05))].index
-    # to_del_2 = corr[((corr['diff_norm'] < .5) & (corr['p'] > .05))].drop(to_del_1).index
-    # to_del = list(to_del_1) + list(to_del_2)
-    # if 'SK_ID_CURR' in to_del:
-    #     to_del.remove('SK_ID_CURR')
-    #
-    # data.drop(to_del, axis = 1, inplace = True)
-    # print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
+    nun = data.nunique()
+    empty = list(nun[nun <= 1].index)
+
+    data.drop(empty, axis = 1, inplace = True)
+    print('After removing empty features there are {0:d} features'.format(data.shape[1]))
+
+    # Removing features with the same distribution on 0 and 1 classes
+    corr = pd.DataFrame(index = ['diff', 'p'])
+    ind = data[data['TARGET'].notnull()].index
+
+    for c in data.columns.drop('TARGET'):
+        corr[c] = corr_feature_with_target(data.loc[ind, c], data.loc[ind, 'TARGET'])
+
+    corr = corr.T
+    corr['diff_norm'] = abs(corr['diff'] / data.mean(axis = 0))
+
+    to_del_1 = corr[((corr['diff'] == 0) & (corr['p'] > .05))].index
+    to_del_2 = corr[((corr['diff_norm'] < .5) & (corr['p'] > .05))].drop(to_del_1).index
+    to_del = list(to_del_1) + list(to_del_2)
+    if 'SK_ID_CURR' in to_del:
+        to_del.remove('SK_ID_CURR')
+
+    data.drop(to_del, axis = 1, inplace = True)
+    print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
 
     # # Removing features with not the same distribution on train and test datasets
     # corr_test = pd.DataFrame(index = ['diff', 'p'])
@@ -550,26 +550,23 @@ def clean_data(data):
     # gc.collect()
 
     # Removing features not interesting for classifier
-    # clf = LGBMClassifier(random_state = 0)
-    # train_index = data[data['TARGET'].notnull()].index
-    # train_columns = data.drop('TARGET', axis = 1).columns
-    #
-    # folds = KFold(n_splits = 5, shuffle = True, random_state = 1024)
-    # new_columns = []
-    # for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_index)):
-    #     clf.fit(data.loc[train_index[train_idx], train_columns], data.loc[train_index[train_idx], 'TARGET'])
-    #     f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-    #     new_columns.extend(f_imp[f_imp > 2].index)
-    #
-    # new_columns = list(set(new_columns))
-    # data = data[['TARGET','SK_ID_CURR']+ new_columns]
-    # print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
+    clf = LGBMClassifier(random_state = 0)
+    train_index = data[data['TARGET'].notnull()].index
+    train_columns = data.drop('TARGET', axis = 1).columns
+
+    folds = KFold(n_splits = 5, shuffle = True, random_state = 1024)
+    new_columns = []
+    for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_index)):
+        clf.fit(data.loc[train_index[train_idx], train_columns], data.loc[train_index[train_idx], 'TARGET'])
+        f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+        new_columns.extend(f_imp[f_imp > 3].index)
+
+    new_columns = list(set(new_columns))
+    data = data[['TARGET','SK_ID_CURR']+ new_columns]
+    print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
     # for i in range(10):
     #     data["PCA_" + str(i)] = top20_PCA_component[:, i]
-
-    features = ['PREV_prev AMT_GOODS_PRICE - AMT_CREDIT_MIN', 'POS_MONTHS_BALANCE_MAX', 'ACTIVE_bureau DAYS_CREDIT_UPDATE - DAYS_CREDIT_ENDDATE_MEAN', 'POS_SK_ID_PREV_SUM', 'BURO_CREDIT_ACTIVE_Closed_MEAN', 'app AMT_INCOME_TOTAL / AMT_ANNUITY', 'BURO_bureau DAYS_CREDIT - CREDIT_DAY_OVERDUE_MEAN', 'PREV_DAYS_LAST_DUE_MIN', 'app DAYS_EMPLOYED / DAYS_BIRTH', 'ACTIVE_bureau DAYS_CREDIT_UPDATE - DAYS_CREDIT_ENDDATE_MAX', 'POS_SK_DPD_MAX', 'EXT_SOURCE_1', 'INS_ins AMT_INSTALMENT - AMT_PAYMENT_VAR', 'PREV_PRODUCT_COMBINATION_Cash X-Sell: high_MEAN', 'APPROVED_AMT_CREDIT_MAX', 'APPROVED_AMT_APPLICATION_SUM', 'ACTIVE_DAYS_CREDIT_MAX', 'NAME_INCOME_TYPE', 'YEARS_BUILD_AVG', 'BURO_AMT_CREDIT_MAX_OVERDUE_SUM', 'CLOSED_SK_ID_BUREAU_SIZE_MEAN', 'BURO_bureau DAYS_CREDIT - DAYS_CREDIT_ENDDATE_SUM', 'INS_AMT_PAYMENT_SUM', 'CLOSED_DAYS_CREDIT_MEAN', 'PREV_DAYS_LAST_DUE_1ST_VERSION_MIN', 'CARD_CNT_DRAWINGS_CURRENT_MAX', 'CLOSED_bureau DAYS_CREDIT - DAYS_CREDIT_ENDDATE_MEAN', 'PREV_prev DAYS_FIRST_DRAWING - DAYS_FIRST_DUE_VAR', 'AMT_CREDIT', 'INS_DAYS_INSTALMENT_MIN', 'CARD_CNT_DRAWINGS_CURRENT_MEAN', 'CARD_AMT_PAYMENT_CURRENT_VAR', 'PREV_DAYS_DECISION_VAR', 'POS_CNT_INSTALMENT_MIN', 'BURO_DAYS_CREDIT_UPDATE_MEAN', 'BURO_bureau DAYS_CREDIT - DAYS_CREDIT_ENDDATE_MAX', 'POS_MONTHS_BALANCE_SUM', 'BURO_DAYS_CREDIT_MEAN', 'PREV_prev DAYS_TERMINATION less -500_MEAN', 'POS_SK_DPD_DEF_SUM', 'REFUSED_DAYS_DECISION_MEAN', 'app EXT_SOURCE_2 * EXT_SOURCE_3', 'REFUSED_CNT_PAYMENT_MEAN', 'BURO_AMT_CREDIT_MAX_OVERDUE_MAX', 'CLOSED_DAYS_CREDIT_MAX', 'OCCUPATION_TYPE', 'FLAG_WORK_PHONE', 'APPROVED_prev AMT_APPLICATION / AMT_CREDIT_MEAN', 'REFUSED_AMT_APPLICATION_VAR', 'CLOSED_DAYS_CREDIT_SUM', 'REFUSED_SK_ID_PREV_MIN', 'INS_AMT_INSTALMENT_VAR', 'APPROVED_DAYS_DECISION_SUM', 'POS_pos CNT_INSTALMENT more CNT_INSTALMENT_FUTURE_VAR', 'ACTIVE_bureau DAYS_CREDIT - CREDIT_DAY_OVERDUE_MAX', 'ACTIVE_AMT_CREDIT_MAX_OVERDUE_MEAN', 'ACTIVE_AMT_CREDIT_SUM_OVERDUE_MEAN', 'BURO_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_DEBT_MAX', 'PREV_DAYS_FIRST_DUE_VAR', 'REFUSED_prev AMT_APPLICATION / AMT_CREDIT_MIN', 'ACTIVE_CREDIT_TYPE_Microloan_MEAN', 'CARD_card AMT_DRAWINGS_CURRENT - AMT_DRAWINGS_POS_CURRENT_VAR', 'PREV_AMT_DOWN_PAYMENT_SUM', 'APPROVED_AMT_ANNUITY_MEAN', 'DEF_30_CNT_SOCIAL_CIRCLE', 'INS_ins DAYS_ENTRY_PAYMENT - DAYS_INSTALMENT_VAR', 'PREV_HOUR_APPR_PROCESS_START_MEAN', 'app AMT_CREDIT - AMT_GOODS_PRICE', 'app EXT_SOURCE mean', 'PREV_CNT_PAYMENT_VAR', 'REFUSED_AMT_DOWN_PAYMENT_SUM', 'POS_CNT_INSTALMENT_VAR', 'POS_SK_DPD_DEF_MEAN', 'PREV_prev DAYS_FIRST_DRAWING - DAYS_FIRST_DUE_SUM', 'app EXT_SOURCE_3 * DAYS_EMPLOYED', 'APPROVED_AMT_ANNUITY_MAX', 'PREV_NFLAG_INSURED_ON_APPROVAL_VAR', 'DAYS_EMPLOYED', 'REFUSED_NAME_PAYMENT_TYPE_XNA_MEAN', 'INS_ins DAYS_ENTRY_PAYMENT - DAYS_INSTALMENT_MEAN', 'CARD_card AMT_BALANCE - AMT_TOTAL_RECEIVABLE_VAR', 'REFUSED_prev AMT_APPLICATION - AMT_CREDIT_VAR', 'PREV_NAME_YIELD_GROUP_high_MEAN', 'PREV_RATE_DOWN_PAYMENT_SUM', 'ACTIVE_AMT_CREDIT_MAX_OVERDUE_SUM', 'app EXT_SOURCE_2 / DAYS_BIRTH', 'APPROVED_NAME_YIELD_GROUP_high_MEAN', 'PREV_DAYS_LAST_DUE_1ST_VERSION_SUM', 'app AMT_INCOME_TOTAL / 12 - AMT_ANNUITY', 'REGION_RATING_CLIENT_W_CITY', 'BURO_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_DEBT_VAR', 'CARD_card AMT_TOTAL_RECEIVABLE - AMT_RECEIVABLE_PRINCIPAL_VAR', 'INS_SK_ID_PREV_SUM', 'PREV_NAME_PRODUCT_TYPE_walk-in_MEAN', 'CARD_SK_DPD_DEF_MEAN', 'REFUSED_AMT_ANNUITY_MAX', 'app AMT_CREDIT / AMT_ANNUITY', 'PREV_prev AMT_APPLICATION / AMT_CREDIT_MEAN', 'REFUSED_NAME_CONTRACT_TYPE_Cash loans_MEAN', 'CARD_AMT_PAYMENT_CURRENT_MEAN', 'POS_SK_DPD_VAR', 'DAYS_BIRTH', 'APPROVED_NAME_PRODUCT_TYPE_walk-in_MEAN', 'INS_NUM_INSTALMENT_NUMBER_VAR', 'INS_DAYS_ENTRY_PAYMENT_VAR', 'PREV_DAYS_TERMINATION_MEAN', 'CARD_AMT_PAYMENT_TOTAL_CURRENT_VAR', 'BURO_AMT_CREDIT_SUM_DEBT_VAR', 'BURO_DAYS_CREDIT_ENDDATE_SUM', 'EXT_SOURCE_3', 'CARD_card AMT_BALANCE - AMT_RECEIVABLE_PRINCIPAL_MEAN', 'APPROVED_AMT_APPLICATION_MAX', 'REFUSED_SK_ID_PREV_MAX', 'POS_CNT_INSTALMENT_FUTURE_VAR', 'ACTIVE_SK_ID_CURR_SUM', 'POS_SK_ID_PREV_MIN', 'INS_AMT_INSTALMENT_MEAN', 'YEARS_BEGINEXPLUATATION_AVG', 'ACTIVE_DAYS_CREDIT_VAR', 'ACTIVE_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_DEBT_MEAN', 'CARD_AMT_BALANCE_MIN', 'BURO_DAYS_CREDIT_ENDDATE_MAX', 'PREV_prev AMT_GOODS_PRICE - AMT_CREDIT_MEAN', 'POS_MONTHS_BALANCE_MEAN', 'INS_AMT_INSTALMENT_MAX', 'INS_AMT_INSTALMENT_MIN', 'BURO_DAYS_CREDIT_VAR', 'POS_CNT_INSTALMENT_FUTURE_MEAN', 'PREV_DAYS_LAST_DUE_1ST_VERSION_MEAN', 'POS_CNT_INSTALMENT_FUTURE_MAX', 'PREV_SELLERPLACE_AREA_MEAN', 'INS_AMT_PAYMENT_MIN', 'BURO_bureau DAYS_CREDIT - CREDIT_DAY_OVERDUE_MAX', 'CARD_card AMT_BALANCE - AMT_RECEIVABLE_PRINCIPAL_MIN', 'CARD_card AMT_BALANCE - AMT_RECIVABLE_MAX', 'app EXT_SOURCE_1 * DAYS_EMPLOYED', 'ACTIVE_SK_ID_CURR_SIZE', 'CLOSED_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_LIMIT_MEAN', 'CLOSED_DAYS_ENDDATE_FACT_MAX', 'INS_DAYS_INSTALMENT_MEAN', 'ACTIVE_bureau DAYS_CREDIT - DAYS_CREDIT_ENDDATE_MAX', 'POS_SK_DPD_MEAN', 'REFUSED_WEEKDAY_APPR_PROCESS_START_TUESDAY_MEAN', 'INS_DAYS_INSTALMENT_SUM', 'REFUSED_prev AMT_APPLICATION - AMT_CREDIT_MIN', 'PREV_prev missing_SUM', 'PREV_prev AMT_APPLICATION - AMT_CREDIT_MAX', 'POS_CNT_INSTALMENT_FUTURE_SUM', 'REFUSED_RATE_DOWN_PAYMENT_SUM', 'CARD_card AMT_RECIVABLE - AMT_RECEIVABLE_PRINCIPAL_MAX', 'PREV_NAME_CONTRACT_STATUS_Refused_MEAN', 'EXT_SOURCE_2', 'REFUSED_prev missing_VAR', 'BURO_AMT_CREDIT_MAX_OVERDUE_VAR', 'POS_CNT_INSTALMENT_MEAN', 'POS_SK_DPD_DEF_VAR', 'PREV_CODE_REJECT_REASON_HC_MEAN', 'CARD_card AMT_BALANCE - AMT_RECEIVABLE_PRINCIPAL_VAR', 'PREV_DAYS_LAST_DUE_VAR', 'PREV_NAME_CLIENT_TYPE_New_MEAN', 'WALLSMATERIAL_MODE', 'INS_DAYS_ENTRY_PAYMENT_MEAN', 'PREV_DAYS_LAST_DUE_1ST_VERSION_MAX', 'POS_MONTHS_BALANCE_MIN', 'PREV_CNT_PAYMENT_SUM', 'APPROVED_prev AMT_APPLICATION / AMT_CREDIT_SUM', 'ACTIVE_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_DEBT_VAR', 'CARD_AMT_RECEIVABLE_PRINCIPAL_MEAN', 'REFUSED_SK_ID_PREV_SUM', 'BURO_AMT_CREDIT_SUM_OVERDUE_MAX', 'APPROVED_SK_ID_PREV_SUM', 'APPROVED_HOUR_APPR_PROCESS_START_SUM', 'CLOSED_DAYS_CREDIT_ENDDATE_MAX', 'REFUSED_SK_ID_CURR_SUM', 'CLOSED_AMT_CREDIT_SUM_SUM', 'PREV_prev missing_MEAN', 'BURO_DAYS_CREDIT_MAX', 'PREV_AMT_CREDIT_SUM', 'BURO_bureau DAYS_CREDIT_ENDDATE - DAYS_ENDDATE_FACT_MEAN', 'BURO_bureau DAYS_CREDIT - DAYS_ENDDATE_FACT_SUM', 'BURO_CREDIT_TYPE_Microloan_MEAN', 'PREV_AMT_GOODS_PRICE_MIN', 'PREV_PRODUCT_COMBINATION_Cash Street: high_MEAN', 'REFUSED_AMT_GOODS_PRICE_VAR', 'APPROVED_DAYS_DECISION_VAR', 'CLOSED_AMT_CREDIT_SUM_MAX', 'REFUSED_prev AMT_APPLICATION / AMT_CREDIT_MAX', 'INS_AMT_PAYMENT_MAX', 'ACTIVE_bureau DAYS_CREDIT - DAYS_CREDIT_ENDDATE_SUM', 'CARD_card AMT_BALANCE - AMT_RECEIVABLE_PRINCIPAL_MAX', 'PREV_prev AMT_APPLICATION / AMT_CREDIT_MAX', 'POS_CNT_INSTALMENT_MAX', 'BURO_DAYS_CREDIT_ENDDATE_MEAN', 'INS_ins DAYS_ENTRY_PAYMENT - DAYS_INSTALMENT_SUM', 'CLOSED_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_DEBT_MEAN', 'PREV_NAME_PAYMENT_TYPE_Cash through the bank_MEAN', 'POS_SK_ID_PREV_MAX', 'APPROVED_NAME_CLIENT_TYPE_New_MEAN', 'CARD_CNT_DRAWINGS_ATM_CURRENT_VAR', 'PREV_NAME_CASH_LOAN_PURPOSE_Repairs_MEAN', 'ACTIVE_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_DEBT_MAX', 'app EXT_SOURCE_3 / DAYS_BIRTH', 'app EXT_SOURCE_2 * DAYS_EMPLOYED', 'PREV_DAYS_DECISION_MEAN', 'BURO_AMT_CREDIT_SUM_OVERDUE_MEAN', 'INS_NUM_INSTALMENT_VERSION_SUM', 'PREV_DAYS_TERMINATION_MIN', 'PREV_NAME_CONTRACT_STATUS_Approved_MEAN', 'INS_DAYS_ENTRY_PAYMENT_MIN', 'BURO_DAYS_CREDIT_UPDATE_VAR', 'BURO_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_DEBT_MIN', 'REFUSED_SELLERPLACE_AREA_SUM', 'app AMT_CREDIT / AMT_GOODS_PRICE', 'BURO_DPD_0 / Month_MIN_MEAN', 'ACTIVE_AMT_CREDIT_SUM_DEBT_MIN', 'CARD_CNT_DRAWINGS_ATM_CURRENT_MEAN', 'PREV_prev AMT_GOODS_PRICE - AMT_CREDIT_SUM', 'PREV_AMT_DOWN_PAYMENT_VAR', 'PREV_prev AMT_APPLICATION / AMT_CREDIT_MIN', 'CARD_AMT_DRAWINGS_ATM_CURRENT_MEAN', 'CARD_CNT_DRAWINGS_POS_CURRENT_VAR', 'BURO_AMT_CREDIT_SUM_MAX', 'BURO_SK_ID_BUREAU_SIZE_MEAN', 'REFUSED_prev missing_SUM', 'APPROVED_SK_ID_CURR_SUM', 'NAME_EDUCATION_TYPE', 'PREV_DAYS_LAST_DUE_1ST_VERSION_VAR', 'INS_AMT_INSTALMENT_SUM', 'app EXT_SOURCE_1 / DAYS_BIRTH', 'ACTIVE_bureau DAYS_CREDIT_UPDATE - DAYS_CREDIT_ENDDATE_MIN', 'app EXT_SOURCE prod', 'INS_ins DAYS_ENTRY_PAYMENT - DAYS_INSTALMENT_MAX', 'REFUSED_DAYS_DECISION_SUM', 'CARD_card AMT_TOTAL_RECEIVABLE - AMT_RECEIVABLE_PRINCIPAL_MAX', 'PREV_prev DAYS_TERMINATION less -500_VAR', 'BURO_STATUS_C_MEAN_MAX', 'CLOSED_AMT_CREDIT_SUM_MEAN', 'ACTIVE_STATUS_X_MEAN_VAR', 'app AMT_INCOME_TOTAL - AMT_GOODS_PRICE', 'ACTIVE_DAYS_CREDIT_MEAN', 'REFUSED_DAYS_DECISION_MAX', 'ACTIVE_AMT_CREDIT_SUM_OVERDUE_MAX', 'CARD_CNT_DRAWINGS_CURRENT_VAR', 'DEF_60_CNT_SOCIAL_CIRCLE', 'BURO_AMT_CREDIT_SUM_DEBT_MEAN', 'BURO_AMT_CREDIT_SUM_OVERDUE_VAR', 'POS_SK_ID_PREV_SIZE', 'app EXT_SOURCE std', 'ACTIVE_AMT_CREDIT_MAX_OVERDUE_MAX', 'ACTIVE_bureau DAYS_CREDIT_UPDATE - DAYS_CREDIT_ENDDATE_SUM', 'app EXT_SOURCE_1 * EXT_SOURCE_3', 'PREV_DAYS_LAST_DUE_MEAN', 'REFUSED_AMT_CREDIT_VAR', 'ACTIVE_AMT_CREDIT_MAX_OVERDUE_VAR', 'CLOSED_DAYS_CREDIT_UPDATE_MEAN', 'APPROVED_prev AMT_GOODS_PRICE - AMT_CREDIT_MAX', 'PREV_prev AMT_APPLICATION - AMT_CREDIT_SUM', 'POS_SK_DPD_SUM', 'INS_ins AMT_INSTALMENT - AMT_PAYMENT_MEAN', 'REFUSED_SELLERPLACE_AREA_MIN', 'APPROVED_NAME_SELLER_INDUSTRY_Connectivity_MEAN', 'PREV_HOUR_APPR_PROCESS_START_MIN', 'REFUSED_AMT_CREDIT_MIN', 'INS_ins AMT_PAYMENT / AMT_INSTALMENT_SUM', 'PREV_prev AMT_GOODS_PRICE - AMT_CREDIT_MAX', 'PREV_AMT_ANNUITY_MIN', 'CARD_card AMT_RECIVABLE - AMT_RECEIVABLE_PRINCIPAL_MEAN', 'CARD_CNT_DRAWINGS_POS_CURRENT_MEAN', 'APPROVED_prev AMT_APPLICATION - AMT_CREDIT_MAX', 'ACTIVE_DAYS_CREDIT_ENDDATE_MEAN', 'FLAG_DOCUMENT_3', 'DAYS_ID_PUBLISH', 'INS_DAYS_ENTRY_PAYMENT_SUM', 'ACTIVE_DAYS_CREDIT_ENDDATE_SUM', 'INS_ins AMT_INSTALMENT - AMT_PAYMENT_MAX', 'ACTIVE_STATUS_0_MEAN_SUM', 'APPROVED_AMT_DOWN_PAYMENT_MAX', 'APPROVED_AMT_GOODS_PRICE_MIN', 'POS_MONTHS_BALANCE_VAR', 'APPROVED_SELLERPLACE_AREA_MEAN', 'APPROVED_CNT_PAYMENT_VAR', 'ACTIVE_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_DEBT_SUM', 'LIVINGAREA_AVG', 'REFUSED_prev missing_MEAN', 'ORGANIZATION_TYPE', 'BURO_AMT_CREDIT_SUM_MEAN', 'CLOSED_bureau DAYS_CREDIT_UPDATE - DAYS_CREDIT_ENDDATE_MIN', 'BURO_bureau DAYS_CREDIT_UPDATE - DAYS_CREDIT_ENDDATE_MEAN', 'CARD_card AMT_TOTAL_RECEIVABLE - AMT_RECEIVABLE_PRINCIPAL_MIN', 'INS_SK_ID_CURR_SUM', 'PREV_prev DAYS_FIRST_DRAWING - DAYS_FIRST_DUE_MEAN', 'APPROVED_HOUR_APPR_PROCESS_START_MEAN', 'APPROVED_AMT_DOWN_PAYMENT_SUM', 'PREV_DAYS_FIRST_DUE_MIN', 'CARD_card AMT_BALANCE - AMT_RECIVABLE_MEAN', 'ACTIVE_DAYS_CREDIT_ENDDATE_MAX', 'APPROVED_AMT_APPLICATION_MEAN', 'APPROVED_CNT_PAYMENT_MEAN', 'APPROVED_prev AMT_GOODS_PRICE - AMT_CREDIT_MEAN', 'BURO_AMT_CREDIT_SUM_DEBT_MIN', 'BURO_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_DEBT_SUM', 'CLOSED_SK_ID_CURR_SUM', 'BURO_AMT_CREDIT_SUM_DEBT_SUM', 'ACTIVE_AMT_CREDIT_SUM_DEBT_MEAN', 'CLOSED_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_OVERDUE_SUM', 'APPROVED_AMT_DOWN_PAYMENT_VAR', 'CODE_GENDER', 'AMT_GOODS_PRICE', 'CLOSED_bureau DAYS_CREDIT - DAYS_ENDDATE_FACT_SUM', 'PREV_CNT_PAYMENT_MEAN', 'POS_SK_ID_CURR_SUM', 'app EXT_SOURCE_1 * EXT_SOURCE_2', 'CARD_card AMT_BALANCE - AMT_TOTAL_RECEIVABLE_MEAN', 'REFUSED_CNT_PAYMENT_MAX', 'REFUSED_prev AMT_APPLICATION - AMT_CREDIT_MAX', 'ACTIVE_bureau DAYS_CREDIT - DAYS_CREDIT_ENDDATE_MEAN', 'CARD_AMT_DRAWINGS_CURRENT_MEAN', 'POS_SK_DPD_DEF_MAX', 'REFUSED_AMT_ANNUITY_MIN', 'BURO_AMT_CREDIT_MAX_OVERDUE_MEAN', 'INS_ins AMT_PAYMENT / AMT_INSTALMENT_MEAN', 'INS_NUM_INSTALMENT_VERSION_VAR', 'INS_AMT_PAYMENT_MEAN', 'INS_DAYS_INSTALMENT_VAR', 'app most popular AMT_GOODS_PRICE', 'BURO_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_DEBT_MEAN', 'REFUSED_DAYS_DECISION_VAR', 'app DAYS_EMPLOYED - DAYS_BIRTH', 'ACTIVE_AMT_CREDIT_SUM_DEBT_SUM', 'POS_SK_ID_PREV_VAR', 'ACTIVE_AMT_CREDIT_SUM_OVERDUE_VAR', 'APPROVED_DAYS_LAST_DUE_1ST_VERSION_SUM', 'ACTIVE_bureau AMT_CREDIT_SUM - AMT_CREDIT_SUM_DEBT_MIN', 'PREV_CHANNEL_TYPE_AP+ (Cash loan)_MEAN', 'ACTIVE_DAYS_CREDIT_UPDATE_MAX', 'INS_ins AMT_INSTALMENT - AMT_PAYMENT_SUM', 'PREV_CODE_REJECT_REASON_XAP_MEAN', 'PREV_prev AMT_GOODS_PRICE - AMT_CREDIT_VAR', 'REFUSED_NAME_PORTFOLIO_XNA_MEAN', 'CARD_card AMT_DRAWINGS_CURRENT - AMT_DRAWINGS_OTHER_CURRENT_MEAN', 'REG_CITY_NOT_LIVE_CITY', 'CARD_AMT_PAYMENT_CURRENT_MAX', 'APPROVED_AMT_ANNUITY_SUM']
-    data = data[['SK_ID_CURR', 'TARGET'] + features]
 
     return data
 
@@ -691,59 +688,59 @@ lgbm_params = {
     'verbose': -1
 }
 
-feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_name = 'prediction_0.csv')
+# feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_name = 'prediction_0.csv')
 
-# def lgbm_evaluate(**params):
-#     warnings.simplefilter('ignore')
-#
-#     params['num_leaves'] = int(params['num_leaves'])
-#     params['max_depth'] = int(params['max_depth'])
-#
-#     clf = LGBMClassifier(**params, n_estimators = 10000, nthread = 24)
-#
-#     train_df = df[df['TARGET'].notnull()]
-#     test_df = df[df['TARGET'].isnull()]
-#
-#     folds = KFold(n_splits = 2, shuffle = True, random_state = 1001)
-#
-#     test_pred_proba = np.zeros(train_df.shape[0])
-#
-#     feats = [f for f in train_df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
-#
-#     for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_df[feats], train_df['TARGET'])):
-#         train_x, train_y = train_df[feats].iloc[train_idx], train_df['TARGET'].iloc[train_idx]
-#         valid_x, valid_y = train_df[feats].iloc[valid_idx], train_df['TARGET'].iloc[valid_idx]
-#
-#         clf.fit(train_x, train_y,
-#                 eval_set = [(train_x, train_y), (valid_x, valid_y)], eval_metric = 'auc',
-#                 verbose = False, early_stopping_rounds = 100)
-#
-#         test_pred_proba[valid_idx] = clf.predict_proba(valid_x, num_iteration = clf.best_iteration_)[:, 1]
-#
-#         del train_x, train_y, valid_x, valid_y
-#         gc.collect()
-#
-#     return roc_auc_score(train_df['TARGET'], test_pred_proba)
-#
-# params = {'colsample_bytree': (0.2, 0.8),
-#           'learning_rate': (.005, .015),
-#           'num_leaves': (24, 36),
-#           'subsample': (0.8, 1),
-#           'max_depth': (5, 9),
-#           'reg_alpha': (.05, .1),
-#           'reg_lambda': (.02, .08),
-#           'min_split_gain': (.01, .03),
-#           'min_child_weight': (34, 50)}
-# bo = BayesianOptimization(lgbm_evaluate, params)
-# bo.maximize(init_points = 5, n_iter = 50)
-# best_params = bo.res['max']['max_params']
-# best_params['num_leaves'] = int(best_params['num_leaves'])
-# best_params['max_depth'] = int(best_params['max_depth'])
-# print(bo.res['max']['max_params'])
-#
-# best_params['verbose'] = -1
-# best_params['silent'] = -1
-# best_params['n_estimators'] = 10000
-# best_params['nthread'] = 24
-# feature_importance, scor = cv_scores(df, 5, best_params, test_prediction_file_name = 'prediction_1.csv')
-# print(scor)
+def lgbm_evaluate(**params):
+    warnings.simplefilter('ignore')
+
+    params['num_leaves'] = int(params['num_leaves'])
+    params['max_depth'] = int(params['max_depth'])
+
+    clf = LGBMClassifier(**params, n_estimators = 10000, nthread = 24)
+
+    train_df = df[df['TARGET'].notnull()]
+    test_df = df[df['TARGET'].isnull()]
+
+    folds = KFold(n_splits = 2, shuffle = True, random_state = 1001)
+
+    test_pred_proba = np.zeros(train_df.shape[0])
+
+    feats = [f for f in train_df.columns if f not in ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index']]
+
+    for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_df[feats], train_df['TARGET'])):
+        train_x, train_y = train_df[feats].iloc[train_idx], train_df['TARGET'].iloc[train_idx]
+        valid_x, valid_y = train_df[feats].iloc[valid_idx], train_df['TARGET'].iloc[valid_idx]
+
+        clf.fit(train_x, train_y,
+                eval_set = [(train_x, train_y), (valid_x, valid_y)], eval_metric = 'auc',
+                verbose = False, early_stopping_rounds = 100)
+
+        test_pred_proba[valid_idx] = clf.predict_proba(valid_x, num_iteration = clf.best_iteration_)[:, 1]
+
+        del train_x, train_y, valid_x, valid_y
+        gc.collect()
+
+    return roc_auc_score(train_df['TARGET'], test_pred_proba)
+
+params = {'colsample_bytree': (0.2, 0.8),
+          'learning_rate': (.005, .015),
+          'num_leaves': (24, 36),
+          'subsample': (0.8, 1),
+          'max_depth': (5, 9),
+          'reg_alpha': (.05, .1),
+          'reg_lambda': (.02, .08),
+          'min_split_gain': (.01, .03),
+          'min_child_weight': (34, 50)}
+bo = BayesianOptimization(lgbm_evaluate, params)
+bo.maximize(init_points = 5, n_iter = 40)
+best_params = bo.res['max']['max_params']
+best_params['num_leaves'] = int(best_params['num_leaves'])
+best_params['max_depth'] = int(best_params['max_depth'])
+print(bo.res['max']['max_params'])
+
+best_params['verbose'] = -1
+best_params['silent'] = -1
+best_params['n_estimators'] = 10000
+best_params['nthread'] = 24
+feature_importance, scor = cv_scores(df, 5, best_params, test_prediction_file_name = 'prediction_1.csv')
+print(scor)
