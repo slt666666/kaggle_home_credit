@@ -88,7 +88,7 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     # for i in categorical_features.index:
     #     cate = df_train[["TARGET", i]].groupby(i).mean()
     #     df[["TARGET", i]] = df[["TARGET", i]].replace(cate['TARGET'].to_dict())
-    # 
+    #
     # del df_train, df_test
     # gc.collect()
 
@@ -110,7 +110,7 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     df.loc[df['DEF_30_CNT_SOCIAL_CIRCLE'] > 1, 'DEF_30_CNT_SOCIAL_CIRCLE'] = '1+'
     df.loc[df['OBS_60_CNT_SOCIAL_CIRCLE'] > 1, 'OBS_60_CNT_SOCIAL_CIRCLE'] = '1+'
     df.loc[df['DEF_60_CNT_SOCIAL_CIRCLE'] > 1, 'DEF_30_CNT_SOCIAL_CIRCLE'] = '1+'
-    df.loc[df['OBS_30_CNT_SOCIAL_CIRCLE'] > 40, 'OBS_30_CNT_SOCIAL_CIRCLE'] = np.nan
+    # df.loc[df['OBS_30_CNT_SOCIAL_CIRCLE'] > 40, 'OBS_30_CNT_SOCIAL_CIRCLE'] = np.nan
     df['age'] = df['DAYS_BIRTH'] / -365
     df['years_employed'] = df['DAYS_EMPLOYED'] / -365
     for col in ['FONDKAPREMONT_MODE', 'HOUSETYPE_MODE', 'WALLSMATERIAL_MODE', 'EMERGENCYSTATE_MODE', 'OBS_30_CNT_SOCIAL_CIRCLE', 'DEF_30_CNT_SOCIAL_CIRCLE', 'OBS_60_CNT_SOCIAL_CIRCLE', 'DEF_60_CNT_SOCIAL_CIRCLE',
