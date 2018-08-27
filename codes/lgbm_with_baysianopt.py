@@ -81,16 +81,16 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     df.drop(df[df['NAME_INCOME_TYPE'] == 'Maternity leave'].index, inplace = True)
     df.drop(df[df['NAME_FAMILY_STATUS'] == 'Unknown'].index, inplace = True)
 
-    df.drop("NAME_TYPE_SUITE", axis=1, inplace = True)
-    df.drop("REGION_POPULATION_RELATIVE", axis=1, inplace = True)
-    df.drop("WEEKDAY_APPR_PROCESS_START", axis=1, inplace = True)
-    df.drop("HOUR_APPR_PROCESS_START", axis=1, inplace = True)
-
     # make categorical -> num set
     categorical_features = df_train.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
     for i in categorical_features.index:
         cate = df_train[["TARGET", i]].groupby(i).mean()
         df[["TARGET", i]] = df[["TARGET", i]].replace(cate['TARGET'].to_dict())
+
+    df.drop("NAME_TYPE_SUITE", axis=1, inplace = True)
+    df.drop("REGION_POPULATION_RELATIVE", axis=1, inplace = True)
+    df.drop("WEEKDAY_APPR_PROCESS_START", axis=1, inplace = True)
+    df.drop("HOUR_APPR_PROCESS_START", axis=1, inplace = True)
 
     del df_train, df_test
     gc.collect()
