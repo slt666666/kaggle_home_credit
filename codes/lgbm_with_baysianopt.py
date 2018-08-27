@@ -9,7 +9,7 @@ warnings.simplefilter(action = 'ignore', category = FutureWarning)
 
 from sklearn.metrics import roc_auc_score, precision_score, recall_score
 from sklearn.decomposition import PCA
-from sklearn.model_selection import KFold, StratifiedKFold, train_test_split
+from sklearn.model_selection import KFold, StratifiedKFold
 
 from lightgbm import LGBMClassifier
 from xgboost import XGBClassifier
@@ -81,6 +81,11 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     df.drop(df[df['NAME_INCOME_TYPE'] == 'Maternity leave'].index, inplace = True)
     df.drop(df[df['NAME_FAMILY_STATUS'] == 'Unknown'].index, inplace = True)
 
+    df.drop("NAME_TYPE_SUITE", axis=1, inplace = True)
+    df.drop("REGION_POPULATION_RELATIVE", axis=1, inplace = True)
+    df.drop("WEEKDAY_APPR_PROCESS_START", axis=1, inplace = True)
+    df.drop("HOUR_APPR_PROCESS_START", axis=1, inplace = True)
+
     # make categorical -> num set
     categorical_features = df_train.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
     for i in categorical_features.index:
@@ -96,10 +101,10 @@ def application_train_test(file_path = file_path, nan_as_category = True):
             'FLAG_DOCUMENT_21'], axis = 1, inplace = True)
 
     # Replace some outliers
-    df['DAYS_EMPLOYED'].replace(365243, np.nan, inplace = True)
+    df['DAYS_EMPLOYED'].replace(365243, 0, inplace = True)
     df.loc[df['OWN_CAR_AGE'] > 80, 'OWN_CAR_AGE'] = np.nan
     df.loc[df['REGION_RATING_CLIENT_W_CITY'] < 0, 'REGION_RATING_CLIENT_W_CITY'] = np.nan
-    df.loc[df['AMT_INCOME_TOTAL'] > 1e8, 'AMT_INCOME_TOTAL'] = np.nan
+    df.loc[df['AMT_INCOME_TOTAL'] > 1e8, 'AMT_INCOME_TOTAL'] = .2e8
     df.loc[df['AMT_REQ_CREDIT_BUREAU_QRT'] > 10, 'AMT_REQ_CREDIT_BUREAU_QRT'] = np.nan
     df.loc[df['OBS_30_CNT_SOCIAL_CIRCLE'] > 40, 'OBS_30_CNT_SOCIAL_CIRCLE'] = np.nan
 
@@ -211,12 +216,12 @@ def bureau_and_balance(file_path = file_path, nan_as_category = True):
     df_bureau = reduce_mem_usage(pd.read_csv(file_path + 'bureau.csv'), verbose = False)
 
     # Replace\remove some outliers in bureau set
-    df_bureau.loc[df_bureau['AMT_ANNUITY'] > .8e8, 'AMT_ANNUITY'] = np.nan
-    df_bureau.loc[df_bureau['AMT_CREDIT_SUM'] > 3e8, 'AMT_CREDIT_SUM'] = np.nan
-    df_bureau.loc[df_bureau['AMT_CREDIT_SUM_DEBT'] > 1e8, 'AMT_CREDIT_SUM_DEBT'] = np.nan
-    df_bureau.loc[df_bureau['AMT_CREDIT_MAX_OVERDUE'] > .8e8, 'AMT_CREDIT_MAX_OVERDUE'] = np.nan
+    # df_bureau.loc[df_bureau['AMT_ANNUITY'] > .8e8, 'AMT_ANNUITY'] = np.nan
+    # df_bureau.loc[df_bureau['AMT_CREDIT_SUM'] > 3e8, 'AMT_CREDIT_SUM'] = np.nan
+    # df_bureau.loc[df_bureau['AMT_CREDIT_SUM_DEBT'] > 1e8, 'AMT_CREDIT_SUM_DEBT'] = np.nan
+    # df_bureau.loc[df_bureau['AMT_CREDIT_MAX_OVERDUE'] > .8e8, 'AMT_CREDIT_MAX_OVERDUE'] = np.nan
     df_bureau.loc[df_bureau['DAYS_ENDDATE_FACT'] < -10000, 'DAYS_ENDDATE_FACT'] = np.nan
-    df_bureau.loc[(df_bureau['DAYS_CREDIT_UPDATE'] > 0) | (df_bureau['DAYS_CREDIT_UPDATE'] < -40000), 'DAYS_CREDIT_UPDATE'] = np.nan
+    # df_bureau.loc[(df_bureau['DAYS_CREDIT_UPDATE'] > 0) | (df_bureau['DAYS_CREDIT_UPDATE'] < -40000), 'DAYS_CREDIT_UPDATE'] = np.nan
     df_bureau.loc[df_bureau['DAYS_CREDIT_ENDDATE'] < -10000, 'DAYS_CREDIT_ENDDATE'] = np.nan
 
     df_bureau.drop(df_bureau[df_bureau['DAYS_ENDDATE_FACT'] < df_bureau['DAYS_CREDIT']].index, inplace = True)
@@ -270,10 +275,10 @@ def previous_application(file_path = file_path, nan_as_category = True):
     df_prev = pd.read_csv(file_path + 'previous_application.csv')
 
     # Replace some outliers
-    df_prev.loc[df_prev['AMT_CREDIT'] > 6000000, 'AMT_CREDIT'] = np.nan
-    df_prev.loc[df_prev['SELLERPLACE_AREA'] > 3500000, 'SELLERPLACE_AREA'] = np.nan
+    # df_prev.loc[df_prev['AMT_CREDIT'] > 6000000, 'AMT_CREDIT'] = np.nan
+    # df_prev.loc[df_prev['SELLERPLACE_AREA'] > 3500000, 'SELLERPLACE_AREA'] = np.nan
     df_prev[['DAYS_FIRST_DRAWING', 'DAYS_FIRST_DUE', 'DAYS_LAST_DUE_1ST_VERSION',
-             'DAYS_LAST_DUE', 'DAYS_TERMINATION']].replace(365243, np.nan, inplace = True)
+             'DAYS_LAST_DUE', 'DAYS_TERMINATION']].replace(365243, 0, inplace = True)
 
     # Some new features
     df_prev['prev missing'] = df_prev.isnull().sum(axis = 1).values
@@ -315,7 +320,7 @@ def pos_cash(file_path = file_path, nan_as_category = True):
     df_pos = pd.read_csv(file_path + 'POS_CASH_balance.csv')
 
     # Replace some outliers
-    df_pos.loc[df_pos['CNT_INSTALMENT_FUTURE'] > 60, 'CNT_INSTALMENT_FUTURE'] = np.nan
+    # df_pos.loc[df_pos['CNT_INSTALMENT_FUTURE'] > 60, 'CNT_INSTALMENT_FUTURE'] = np.nan
 
     # Some new features
     df_pos['pos CNT_INSTALMENT more CNT_INSTALMENT_FUTURE'] = \
@@ -343,8 +348,8 @@ def installments_payments(file_path = file_path, nan_as_category = True):
     df_ins = pd.read_csv(file_path + 'installments_payments.csv')
 
     # Replace some outliers
-    df_ins.loc[df_ins['NUM_INSTALMENT_VERSION'] > 70, 'NUM_INSTALMENT_VERSION'] = np.nan
-    df_ins.loc[df_ins['DAYS_ENTRY_PAYMENT'] < -4000, 'DAYS_ENTRY_PAYMENT'] = np.nan
+    # df_ins.loc[df_ins['NUM_INSTALMENT_VERSION'] > 70, 'NUM_INSTALMENT_VERSION'] = np.nan
+    # df_ins.loc[df_ins['DAYS_ENTRY_PAYMENT'] < -4000, 'DAYS_ENTRY_PAYMENT'] = np.nan
 
     # Some new features
     df_ins['ins DAYS_ENTRY_PAYMENT - DAYS_INSTALMENT'] = df_ins['DAYS_ENTRY_PAYMENT'] - df_ins['DAYS_INSTALMENT']
@@ -375,8 +380,8 @@ def credit_card_balance(file_path = file_path, nan_as_category = True):
     df_card = pd.read_csv(file_path + 'credit_card_balance.csv')
 
     # Replace some outliers
-    df_card.loc[df_card['AMT_PAYMENT_CURRENT'] > 4000000, 'AMT_PAYMENT_CURRENT'] = np.nan
-    df_card.loc[df_card['AMT_CREDIT_LIMIT_ACTUAL'] > 1000000, 'AMT_CREDIT_LIMIT_ACTUAL'] = np.nan
+    # df_card.loc[df_card['AMT_PAYMENT_CURRENT'] > 4000000, 'AMT_PAYMENT_CURRENT'] = np.nan
+    # df_card.loc[df_card['AMT_CREDIT_LIMIT_ACTUAL'] > 1000000, 'AMT_CREDIT_LIMIT_ACTUAL'] = np.nan
 
     # Some new features
     df_card['card missing'] = df_card.isnull().sum(axis = 1).values
@@ -550,64 +555,21 @@ def clean_data(data):
     # gc.collect()
 
     # Removing features not interesting for classifier
-    # clf = LGBMClassifier(random_state = 0)
-    # train_index = data[data['TARGET'].notnull()].index
-    # train_columns = data.drop('TARGET', axis = 1).columns
-    #
-    # new_columns = []
-    # clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
-    # f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-    # new_columns = f_imp[f_imp > 1].index
-    # train_columns = train_columns.drop(new_columns)
-    #
-    # data.drop(train_columns, axis = 1, inplace = True)
-    # print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
+    clf = LGBMClassifier(random_state = 0)
+    train_index = data[data['TARGET'].notnull()].index
+    train_columns = data.drop('TARGET', axis = 1).columns
+
+    new_columns = []
+    clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
+    f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+    new_columns = f_imp[f_imp > 1].index
+    train_columns = train_columns.drop(new_columns)
+
+    data.drop(train_columns, axis = 1, inplace = True)
+    print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
     # for i in range(10):
     #     data["PCA_" + str(i)] = top20_PCA_component[:, i]
-
-    #FORWARD FEATURE SELCTION
-    score=0
-    score1=0
-    score2=0
-    select_list=[]
-    col_list=[x for x in list(data.columns) if x not in ['SK_ID_CURR','TARGET']]
-    k=0
-
-    while True:
-        score1=0
-        score2=0
-        temp_list=select_list
-        for i,col in enumerate(col_list):
-            if k==0:
-                train_X,test_X,train_y,test_y=train_test_split(data[col],data['TARGET'],random_state=200)
-                model =LGBMClassifier(learning_rate=0.05,n_estimators=200,n_jobs=-1,reg_alpha=0.1,min_split_gain=.1,verbose=-1)
-                model.fit(np.array(train_X).reshape(-1,1),train_y)
-                score2=roc_auc_score(test_y,model.predict_proba(np.array(test_X).reshape(-1,1))[:,1])
-            else:
-                temp_list.extend([col])
-                train_X,test_X,train_y,test_y=train_test_split(data[temp_list],data['TARGET'],random_state=200)
-                model =LGBMClassifier(learning_rate=0.05,n_estimators=200,n_jobs=-1,reg_alpha=0.1,min_split_gain=.1,verbose=-1)
-                model.fit(train_X,train_y)
-                score2=roc_auc_score(test_y,model.predict_proba(test_X)[:,1])
-                temp_list.remove(col)
-            if score1<=score2:
-                score1=score2
-                col1=col
-    #        print('dropped col',col,':',score2)
-        k=k+1
-        if score<=score1:
-            score=score1
-            print('select col',col1,':',score)
-            select_list.extend([col1])
-            col_list.remove(col1)
-        else:
-            print('Best score achieved')
-            break
-
-    print(select_list)
-    print('best score:',score)
-    data = data[['SK_ID_CURR','TARGET'] + select_list]
 
     return data
 
