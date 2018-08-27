@@ -504,11 +504,6 @@ def clean_data(data):
     # del PCA_base_features, pca, transformed
     # gc.collect()
 
-    # get features by Gain Score !!
-    features_score = pd.read_csv("../features/feature_scored_df.csv")
-    feature_score = features_score[features_score["gain_score"] > 0]
-    data = data[['TARGET','SK_ID_CURR'] + list(feature_score["feature"])]
-
     # Removing empty features
     nun = data.nunique()
     empty = list(nun[nun <= 1].index)
@@ -559,15 +554,13 @@ def clean_data(data):
     train_index = data[data['TARGET'].notnull()].index
     train_columns = data.drop('TARGET', axis = 1).columns
 
-    folds = KFold(n_splits = 5, shuffle = True, random_state = 1024)
     new_columns = []
-    for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_index)):
-        clf.fit(data.loc[train_index[train_idx], train_columns], data.loc[train_index[train_idx], 'TARGET'])
-        f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-        new_columns.extend(f_imp[f_imp > 2].index)
+    clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
+    f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+    new_columns = f_imp[f_imp > 1].index
+    train_columns = train_columns.drop(new_columns)
 
-    new_columns = list(set(new_columns))
-    data = data[['TARGET','SK_ID_CURR']+ new_columns]
+    data.drop(train_columns, axis = 1, inplace = True)
     print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
     # for i in range(10):
@@ -683,7 +676,7 @@ lgbm_params = {
     'colsample_bytree': 0.6062533757928202,
     'learning_rate': 0.010417867211885186,
     'num_leaves': 30,
-    'subsample': 0.9147241775305226,
+    'subsample': 0.7,
     'max_depth': 7,
     'reg_alpha': 0.07860113928467227,
     'reg_lambda': 0.060046244507381386,
