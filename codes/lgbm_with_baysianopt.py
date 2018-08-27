@@ -207,7 +207,7 @@ def bureau_and_balance(file_path = file_path, nan_as_category = True):
     # Bureau balance: Perform aggregations
     aggregations = {}
     for col in df_bureau_b.columns:
-        aggregations[col] = ['mean'] if col in bureau_b_cat else ['min', 'max', 'size']
+        aggregations[col] = ['mean'] if col in bureau_b_cat else ['max', 'size']
     df_bureau_b_agg = df_bureau_b.groupby('SK_ID_BUREAU').agg(aggregations)
     df_bureau_b_agg.columns = pd.Index([e[0] + "_" + e[1].upper() for e in df_bureau_b_agg.columns.tolist()])
     del df_bureau_b
@@ -250,7 +250,7 @@ def bureau_and_balance(file_path = file_path, nan_as_category = True):
     categorical = bureau_cat + bureau_b_cat
     aggregations = {}
     for col in df_bureau.columns:
-        aggregations[col] = ['mean'] if col in categorical else ['min', 'max', 'size', 'mean', 'var', 'sum']
+        aggregations[col] = ['mean'] if col in categorical else ['max', 'size', 'mean']
     df_bureau_agg = df_bureau.groupby('SK_ID_CURR').agg(aggregations)
     df_bureau_agg.columns = pd.Index(['BURO_' + e[0] + "_" + e[1].upper() for e in df_bureau_agg.columns.tolist()])
 
@@ -295,7 +295,7 @@ def previous_application(file_path = file_path, nan_as_category = True):
     # Aggregations for application set
     aggregations = {}
     for col in df_prev.columns:
-        aggregations[col] = ['mean'] if col in categorical else ['min', 'max', 'size', 'mean', 'var', 'sum']
+        aggregations[col] = ['mean'] if col in categorical else ['min', 'max', 'size', 'mean']
     df_prev_agg = df_prev.groupby('SK_ID_CURR').agg(aggregations)
     df_prev_agg.columns = pd.Index(['PREV_' + e[0] + "_" + e[1].upper() for e in df_prev_agg.columns.tolist()])
 
@@ -332,7 +332,7 @@ def pos_cash(file_path = file_path, nan_as_category = True):
     # Aggregations for application set
     aggregations = {}
     for col in df_pos.columns:
-        aggregations[col] = ['mean'] if col in categorical else ['min', 'max', 'size', 'mean', 'var', 'sum']
+        aggregations[col] = ['mean'] if col in categorical else ['max', 'mean']
     df_pos_agg = df_pos.groupby('SK_ID_CURR').agg(aggregations)
     df_pos_agg.columns = pd.Index(['POS_' + e[0] + "_" + e[1].upper() for e in df_pos_agg.columns.tolist()])
 
@@ -364,7 +364,7 @@ def installments_payments(file_path = file_path, nan_as_category = True):
     # Aggregations for application set
     aggregations = {}
     for col in df_ins.columns:
-        aggregations[col] = ['mean'] if col in categorical else ['min', 'max', 'size', 'mean', 'var', 'sum']
+        aggregations[col] = ['mean'] if col in categorical else ['size', 'mean', 'sum']
     df_ins_agg = df_ins.groupby('SK_ID_CURR').agg(aggregations)
     df_ins_agg.columns = pd.Index(['INS_' + e[0] + "_" + e[1].upper() for e in df_ins_agg.columns.tolist()])
 
@@ -407,7 +407,7 @@ def credit_card_balance(file_path = file_path, nan_as_category = True):
     # Aggregations for application set
     aggregations = {}
     for col in df_card.columns:
-        aggregations[col] = ['mean'] if col in categorical else ['min', 'max', 'size', 'mean', 'var', 'sum']
+        aggregations[col] = ['mean'] if col in categorical else ['mean']
     df_card_agg = df_card.groupby('SK_ID_CURR').agg(aggregations)
     df_card_agg.columns = pd.Index(['CARD_' + e[0] + "_" + e[1].upper() for e in df_card_agg.columns.tolist()])
 
