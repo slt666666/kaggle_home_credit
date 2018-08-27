@@ -317,6 +317,21 @@ def display_importances(feature_importance_df_):
     plt.tight_layout()
     plt.savefig('lgbm_importances01.png')
 
+
+def corr_feature_with_target(feature, target):
+    c0 = feature[target == 0].dropna()
+    c1 = feature[target == 1].dropna()
+
+    if set(feature.unique()) == set([0, 1]):
+        diff = abs(c0.mean(axis = 0) - c1.mean(axis = 0))
+    else:
+        diff = abs(c0.median(axis = 0) - c1.median(axis = 0))
+
+    p = ranksums(c0, c1)[1] if ((len(c0) >= 20) & (len(c1) >= 20)) else 2
+
+    return [diff, p]
+
+
 def clean_data(data):
     warnings.simplefilter(action = 'ignore')
 
