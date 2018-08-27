@@ -507,7 +507,7 @@ def clean_data(data):
     # get features by Gain Score !!
     features_score = pd.read_csv("../features/feature_scored_df.csv")
     feature_score = features_score[features_score["gain_score"] > 0]
-    data = data[list(feature_score["feature"])]
+    data = data[['TARGET','SK_ID_CURR'] + list(feature_score["feature"])]
 
     # Removing empty features
     nun = data.nunique()
