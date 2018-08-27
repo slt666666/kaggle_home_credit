@@ -9,9 +9,7 @@ warnings.simplefilter(action = 'ignore', category = FutureWarning)
 
 from sklearn.metrics import roc_auc_score, precision_score, recall_score
 from sklearn.decomposition import PCA
-from sklearn.model_selection import KFold, StratifiedKFold
-from sklearn.preprocessing import LabelEncoder
-le = LabelEncoder()
+from sklearn.model_selection import KFold, StratifiedKFold, train_test_split
 
 from lightgbm import LGBMClassifier
 from xgboost import XGBClassifier
@@ -83,14 +81,14 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     df.drop(df[df['NAME_INCOME_TYPE'] == 'Maternity leave'].index, inplace = True)
     df.drop(df[df['NAME_FAMILY_STATUS'] == 'Unknown'].index, inplace = True)
 
-    # # make categorical -> num set
-    # categorical_features = df_train.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
-    # for i in categorical_features.index:
-    #     cate = df_train[["TARGET", i]].groupby(i).mean()
-    #     df[["TARGET", i]] = df[["TARGET", i]].replace(cate['TARGET'].to_dict())
-    #
-    # del df_train, df_test
-    # gc.collect()
+    # make categorical -> num set
+    categorical_features = df_train.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
+    for i in categorical_features.index:
+        cate = df_train[["TARGET", i]].groupby(i).mean()
+        df[["TARGET", i]] = df[["TARGET", i]].replace(cate['TARGET'].to_dict())
+
+    del df_train, df_test
+    gc.collect()
 
     # Remove some empty features
     df.drop(['FLAG_DOCUMENT_2', 'FLAG_DOCUMENT_10', 'FLAG_DOCUMENT_12', 'FLAG_DOCUMENT_13', 'FLAG_DOCUMENT_14',
@@ -99,21 +97,11 @@ def application_train_test(file_path = file_path, nan_as_category = True):
 
     # Replace some outliers
     df['DAYS_EMPLOYED'].replace(365243, np.nan, inplace = True)
-    # df['OWN_CAR_AGE'] = df['OWN_CAR_AGE'].fillna(0)
     df.loc[df['OWN_CAR_AGE'] > 80, 'OWN_CAR_AGE'] = np.nan
     df.loc[df['REGION_RATING_CLIENT_W_CITY'] < 0, 'REGION_RATING_CLIENT_W_CITY'] = np.nan
-    # df['AMT_INCOME_TOTAL'] = np.log1p(df['AMT_INCOME_TOTAL'])
     df.loc[df['AMT_INCOME_TOTAL'] > 1e8, 'AMT_INCOME_TOTAL'] = np.nan
-    # df['AMT_CREDIT'] = np.log1p(df['AMT_CREDIT'])
     df.loc[df['AMT_REQ_CREDIT_BUREAU_QRT'] > 10, 'AMT_REQ_CREDIT_BUREAU_QRT'] = np.nan
     df.loc[df['OBS_30_CNT_SOCIAL_CIRCLE'] > 40, 'OBS_30_CNT_SOCIAL_CIRCLE'] = np.nan
-    df['age'] = df['DAYS_BIRTH'] / -365
-    df['years_employed'] = df['DAYS_EMPLOYED'] / -365
-    for col in ['FONDKAPREMONT_MODE', 'HOUSETYPE_MODE', 'WALLSMATERIAL_MODE', 'EMERGENCYSTATE_MODE', 'NAME_CONTRACT_TYPE', 'CODE_GENDER', 'FLAG_OWN_CAR', 'FLAG_OWN_REALTY', 'NAME_TYPE_SUITE', 'NAME_INCOME_TYPE', 'NAME_EDUCATION_TYPE', 'NAME_FAMILY_STATUS', 'NAME_HOUSING_TYPE', 'OCCUPATION_TYPE', 'WEEKDAY_APPR_PROCESS_START', 'ORGANIZATION_TYPE', 'WEEKDAY_APPR_PROCESS_START']:
-        unique_values = list(set(df[col].astype(str).unique()))
-        le.fit(unique_values)
-        df[col] = le.transform(df[col].astype(str))
-
 
     # # Categorical features with Binary encode (0 or 1; two categories)
     # for bin_feature in ['CODE_GENDER', 'FLAG_OWN_CAR', 'FLAG_OWN_REALTY']:
@@ -562,21 +550,64 @@ def clean_data(data):
     # gc.collect()
 
     # Removing features not interesting for classifier
-    clf = LGBMClassifier(random_state = 0)
-    train_index = data[data['TARGET'].notnull()].index
-    train_columns = data.drop('TARGET', axis = 1).columns
-
-    new_columns = []
-    clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
-    f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-    new_columns = f_imp[f_imp > 1].index
-    train_columns = train_columns.drop(new_columns)
-
-    data.drop(train_columns, axis = 1, inplace = True)
-    print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
+    # clf = LGBMClassifier(random_state = 0)
+    # train_index = data[data['TARGET'].notnull()].index
+    # train_columns = data.drop('TARGET', axis = 1).columns
+    #
+    # new_columns = []
+    # clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
+    # f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+    # new_columns = f_imp[f_imp > 1].index
+    # train_columns = train_columns.drop(new_columns)
+    #
+    # data.drop(train_columns, axis = 1, inplace = True)
+    # print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
     # for i in range(10):
     #     data["PCA_" + str(i)] = top20_PCA_component[:, i]
+
+    #FORWARD FEATURE SELCTION
+    score=0
+    score1=0
+    score2=0
+    select_list=[]
+    col_list=[x for x in list(data.columns) if x not in ['SK_ID_CURR','TARGET']]
+    k=0
+
+    while True:
+        score1=0
+        score2=0
+        temp_list=select_list
+        for i,col in enumerate(col_list):
+            if k==0:
+                train_X,test_X,train_y,test_y=train_test_split(data[col],data['TARGET'],random_state=200)
+                model =LGBMClassifier(learning_rate=0.05,n_estimators=200,n_jobs=-1,reg_alpha=0.1,min_split_gain=.1,verbose=-1)
+                model.fit(np.array(train_X).reshape(-1,1),train_y)
+                score2=roc_auc_score(test_y,model.predict_proba(np.array(test_X).reshape(-1,1))[:,1])
+            else:
+                temp_list.extend([col])
+                train_X,test_X,train_y,test_y=train_test_split(data[temp_list],data['TARGET'],random_state=200)
+                model =LGBMClassifier(learning_rate=0.05,n_estimators=200,n_jobs=-1,reg_alpha=0.1,min_split_gain=.1,verbose=-1)
+                model.fit(train_X,train_y)
+                score2=roc_auc_score(test_y,model.predict_proba(test_X)[:,1])
+                temp_list.remove(col)
+            if score1<=score2:
+                score1=score2
+                col1=col
+    #        print('dropped col',col,':',score2)
+        k=k+1
+        if score<=score1:
+            score=score1
+            print('select col',col1,':',score)
+            select_list.extend([col1])
+            col_list.remove(col1)
+        else:
+            print('Best score achieved')
+            break
+
+    print(select_list)
+    print('best score:',score)
+    data = data[['SK_ID_CURR','TARGET'] + select_list]
 
     return data
 
