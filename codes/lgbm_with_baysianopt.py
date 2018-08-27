@@ -555,7 +555,7 @@ def clean_data(data):
     # Removing features not interesting for classifier
     clf = LGBMClassifier(random_state = 0)
     train_index = data[data['TARGET'].notnull()].index
-    train_columns = data.drop('TARGET', axis = 1).columns
+    train_columns = data.drop(['TARGET', 'SK_ID_CURR'], axis = 1).columns
 
     new_columns = []
     clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
