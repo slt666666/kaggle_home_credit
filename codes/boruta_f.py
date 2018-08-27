@@ -15,6 +15,7 @@ from lightgbm import LGBMClassifier
 from xgboost import XGBClassifier
 
 from sklearn.ensemble import RandomForestClassifier
+from boruta import boruta
 from boruta import BorutaPy
 
 from scipy.stats import ranksums
