@@ -355,42 +355,42 @@ def clean_data(data):
     print('After removing empty features there are {0:d} features'.format(data.shape[1]))
 
     # Removing features with the same distribution on 0 and 1 classes
-    corr = pd.DataFrame(index = ['diff', 'p'])
-    ind = data[data['TARGET'].notnull()].index
+    # corr = pd.DataFrame(index = ['diff', 'p'])
+    # ind = data[data['TARGET'].notnull()].index
+    #
+    # for c in data.columns.drop('TARGET'):
+    #     corr[c] = corr_feature_with_target(data.loc[ind, c], data.loc[ind, 'TARGET'])
+    #
+    # corr = corr.T
+    # corr['diff_norm'] = abs(corr['diff'] / data.mean(axis = 0))
+    #
+    # to_del_1 = corr[((corr['diff'] == 0) & (corr['p'] > .05))].index
+    # to_del_2 = corr[((corr['diff_norm'] < .5) & (corr['p'] > .05))].drop(to_del_1).index
+    # to_del = list(to_del_1) + list(to_del_2)
+    # if 'SK_ID_CURR' in to_del:
+    #     to_del.remove('SK_ID_CURR')
+    #
+    # data.drop(to_del, axis = 1, inplace = True)
+    # print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
 
-    for c in data.columns.drop('TARGET'):
-        corr[c] = corr_feature_with_target(data.loc[ind, c], data.loc[ind, 'TARGET'])
-
-    corr = corr.T
-    corr['diff_norm'] = abs(corr['diff'] / data.mean(axis = 0))
-
-    to_del_1 = corr[((corr['diff'] == 0) & (corr['p'] > .05))].index
-    to_del_2 = corr[((corr['diff_norm'] < .5) & (corr['p'] > .05))].drop(to_del_1).index
-    to_del = list(to_del_1) + list(to_del_2)
-    if 'SK_ID_CURR' in to_del:
-        to_del.remove('SK_ID_CURR')
-
-    data.drop(to_del, axis = 1, inplace = True)
-    print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
-
-    # Removing features with not the same distribution on train and test datasets
-    corr_test = pd.DataFrame(index = ['diff', 'p'])
-    target = data['TARGET'].notnull().astype(int)
-
-    for c in data.columns.drop('TARGET'):
-        corr_test[c] = corr_feature_with_target(data[c], target)
-
-    corr_test = corr_test.T
-    corr_test['diff_norm'] = abs(corr_test['diff'] / data.mean(axis = 0))
-
-    bad_features = corr_test[((corr_test['p'] < .05) & (corr_test['diff_norm'] > 1))].index
-    bad_features = corr.loc[bad_features][corr['diff_norm'] == 0].index
-
-    data.drop(bad_features, axis = 1, inplace = True)
-    print('After removing features with not the same distribution on train and test datasets there are {0:d} features'.format(data.shape[1]))
-
-    del corr, corr_test
-    gc.collect()
+    # # Removing features with not the same distribution on train and test datasets
+    # corr_test = pd.DataFrame(index = ['diff', 'p'])
+    # target = data['TARGET'].notnull().astype(int)
+    #
+    # for c in data.columns.drop('TARGET'):
+    #     corr_test[c] = corr_feature_with_target(data[c], target)
+    #
+    # corr_test = corr_test.T
+    # corr_test['diff_norm'] = abs(corr_test['diff'] / data.mean(axis = 0))
+    #
+    # bad_features = corr_test[((corr_test['p'] < .05) & (corr_test['diff_norm'] > 1))].index
+    # bad_features = corr.loc[bad_features][corr['diff_norm'] == 0].index
+    #
+    # data.drop(bad_features, axis = 1, inplace = True)
+    # print('After removing features with not the same distribution on train and test datasets there are {0:d} features'.format(data.shape[1]))
+    #
+    # del corr, corr_test
+    # gc.collect()
 
     # Removing features not interesting for classifier
     clf = LGBMClassifier(random_state = 0)
