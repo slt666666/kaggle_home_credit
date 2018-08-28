@@ -520,7 +520,6 @@ def get_epistasis(df):
     result = pd.DataFrame(sorted(result), columns=["p", "combi"])
     result = result.dropna(how='all')
     result = result[result["p"] < 0.05 / len(range_list)]
-    print(result.loc[300, :])
     if result.shape[0] > 300:
         result = result[0:300]
     combi_list = list(result["combi"])
