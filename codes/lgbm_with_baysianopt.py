@@ -529,7 +529,7 @@ def get_epistasis(df):
 
     return df
 
-df = get_epistasis(df)
+# df = get_epistasis(df)
 
 def corr_feature_with_target(feature, target):
     c0 = feature[target == 0].dropna()
