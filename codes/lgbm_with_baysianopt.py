@@ -526,7 +526,7 @@ def get_epistasis(df):
 
     return df
 
-df = get_epistasis(df)
+# df = get_epistasis(df)
 
 def corr_feature_with_target(feature, target):
     c0 = feature[target == 0].dropna()
@@ -602,7 +602,24 @@ def clean_data(data):
     # gc.collect()
 
     # Removing features not interesting for classifier
-    clf = LGBMClassifier(random_state = 0)
+
+    lgbm_params = {
+        'nthread': 8,
+        'n_estimators': 10000,
+        'colsample_bytree': 0.6062533757928202,
+        'learning_rate': 0.010417867211885186,
+        'num_leaves': 30,
+        'subsample': 0.9147241775305226,
+        'max_depth': 7,
+        'reg_alpha': 0.07860113928467227,
+        'reg_lambda': 0.060046244507381386,
+        'min_split_gain': 0.029065783508116658,
+        'min_child_weight': 39.69965950255416,
+        'silent': -1,
+        'verbose': -1
+    }
+
+    clf = LGBMClassifier(**lgbm_params)
     train_index = data[data['TARGET'].notnull()].index
     train_columns = data.drop('TARGET', axis = 1).columns
 
