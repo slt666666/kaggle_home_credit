@@ -502,18 +502,21 @@ def get_epistasis(df):
     train = df[df['TARGET'].notnull()]
     result = []
     for i in tqdm(range_list):
-        pheno = np.array(train["TARGET"])
-        gene = np.array(train[[i[0], i[1]]])
-        gene = np.column_stack((np.ones((gene.shape[0], 1)), gene))
-        a = regression_analyze(gene, pheno)
-        train['tmp'] = train[i[0]] * train[i[1]]
-        gene = np.array(train[[i[0], i[1], 'tmp']])
-        gene = np.column_stack((np.ones((gene.shape[0], 1)), gene))
-        # print(train.shape)
-        # train.loc[:, ~train.isnull().any()]
-        b = regression_analyze(gene, pheno)
+        try:
+            pheno = np.array(train["TARGET"])
+            gene = np.array(train[[i[0], i[1]]])
+            gene = np.column_stack((np.ones((gene.shape[0], 1)), gene))
+            a = regression_analyze(gene, pheno)
+            train['tmp'] = train[i[0]] * train[i[1]]
+            gene = np.array(train[[i[0], i[1], 'tmp']])
+            gene = np.column_stack((np.ones((gene.shape[0], 1)), gene))
+            # print(train.shape)
+            # train.loc[:, ~train.isnull().any()]
+            b = regression_analyze(gene, pheno)
 
-        result.append([f_test(a, b, train.shape[0]), i])
+            result.append([f_test(a, b, train.shape[0]), i])
+        except:
+            pass
     result = pd.DataFrame(sorted(result), columns=["p", "combi"])
     result = result.dropna(how='all')
     result = result[result["p"] < 0.05 / len(range_list)]
@@ -526,7 +529,7 @@ def get_epistasis(df):
 
     return df
 
-# df = get_epistasis(df)
+df = get_epistasis(df)
 
 def corr_feature_with_target(feature, target):
     c0 = feature[target == 0].dropna()
@@ -623,13 +626,17 @@ def clean_data(data):
     train_index = data[data['TARGET'].notnull()].index
     train_columns = data.drop('TARGET', axis = 1).columns
 
+    folds = KFold(n_splits = 5, shuffle = True, random_state = 1024)
     new_columns = []
-    clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
-    f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-    new_columns = f_imp[f_imp > 1].index
-    train_columns = train_columns.drop(new_columns)
+    for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_index)):
+        clf.fit(data.loc[train_index[train_idx], train_columns], data.loc[train_index[train_idx], 'TARGET'])
+        f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+        f_imp.to_csv("{}st_features_imp.csv".format(n_fold))
+        new_columns.append(list(f_imp[f_imp > 0].index))
 
-    data.drop(train_columns, axis = 1, inplace = True)
+    new_columns = list(set(new_columns[0]) & set(new_columns[1]) & set(new_columns[2]) & set(new_columns[3]) & set(new_columns[4]))
+    pd.Series(new_columns).to_csv("result_features.csv")
+    data = data[['TARGET','SK_ID_CURR']+ new_columns]
     print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
     # for i in range(10):
