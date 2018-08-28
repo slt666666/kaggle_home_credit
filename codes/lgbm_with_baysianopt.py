@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import itertools
 # import matplotlib.pyplot as plt
 # import seaborn as sns
 from tqdm import tqdm
@@ -16,8 +15,7 @@ from sklearn.model_selection import KFold, StratifiedKFold
 from lightgbm import LGBMClassifier
 from xgboost import XGBClassifier
 
-from scipy.stats import ranksums, f
-
+from scipy.stats import ranksums
 from bayes_opt import BayesianOptimization
 
 
@@ -70,18 +68,6 @@ def one_hot_encoder(data, nan_as_category = True):
     data.drop(categorical_columns, axis = 1, inplace = True)
     return data, [c for c in data.columns if c not in original_columns]
 
-def regression_analyze(gene, pheno):
-    partial_coef = np.linalg.pinv(gene).dot(pheno)
-    fluct_reg = pheno - gene.dot(partial_coef)
-    fluct_y = pheno - pheno.mean()
-    mult_cor_coef = 1 - ((fluct_reg * fluct_reg).sum() / (fluct_y * fluct_y).sum())
-    return mult_cor_coef
-
-def f_test(R2_part1, R2_part2, n):
-        f_value = ((R2_part2 - R2_part1) / 3) / ((1 - R2_part2) / (n - 4))
-        p_value = f.sf(f_value, 3, n - 4)
-        return p_value
-
 
 file_path = '../input/'
 
@@ -111,13 +97,15 @@ def application_train_test(file_path = file_path, nan_as_category = True):
             'FLAG_DOCUMENT_21'], axis = 1, inplace = True)
 
     # Replace some outliers
-    df['DAYS_EMPLOYED'].replace(365243, 0, inplace = True)
+    df['DAYS_EMPLOYED'].replace(365243, np.nan, inplace = True)
     df.loc[df['OWN_CAR_AGE'] > 80, 'OWN_CAR_AGE'] = np.nan
     df.loc[df['REGION_RATING_CLIENT_W_CITY'] < 0, 'REGION_RATING_CLIENT_W_CITY'] = np.nan
-    df.loc[df['AMT_INCOME_TOTAL'] > 1e8, 'AMT_INCOME_TOTAL'] = .2e8
+    df.loc[df['AMT_INCOME_TOTAL'] > 1e8, 'AMT_INCOME_TOTAL'] = np.nan
     df.loc[df['AMT_REQ_CREDIT_BUREAU_QRT'] > 10, 'AMT_REQ_CREDIT_BUREAU_QRT'] = np.nan
     df.loc[df['OBS_30_CNT_SOCIAL_CIRCLE'] > 40, 'OBS_30_CNT_SOCIAL_CIRCLE'] = np.nan
-
+    df['DAYS_LAST_PHONE_CHANGE'].replace(0, np.nan, inplace=True)
+    df['long_employment'] = (df['DAYS_EMPLOYED'] < -2000).astype(int)
+    df['retirement_age'] = (df['DAYS_BIRTH'] < -14000).astype(int)
     # # Categorical features with Binary encode (0 or 1; two categories)
     # for bin_feature in ['CODE_GENDER', 'FLAG_OWN_CAR', 'FLAG_OWN_REALTY']:
     #     df[bin_feature], _ = pd.factorize(df[bin_feature])
@@ -127,51 +115,139 @@ def application_train_test(file_path = file_path, nan_as_category = True):
 
     # Some new features
     df['app missing'] = df.isnull().sum(axis = 1).values
+    df['annuity_income_percentage'] = df['AMT_ANNUITY'] / df['AMT_INCOME_TOTAL']
+    df['car_to_birth_ratio'] = df['OWN_CAR_AGE'] / df['DAYS_BIRTH']
+    df['car_to_employ_ratio'] = df['OWN_CAR_AGE'] / df['DAYS_EMPLOYED']
+    df['children_ratio'] = df['CNT_CHILDREN'] / df['CNT_FAM_MEMBERS']
+    df['credit_to_annuity_ratio'] = df['AMT_CREDIT'] / df['AMT_ANNUITY']
+    df['credit_to_goods_ratio'] = df['AMT_CREDIT'] / df['AMT_GOODS_PRICE']
+    df['credit_to_income_ratio'] = df['AMT_CREDIT'] / df['AMT_INCOME_TOTAL']
+    df['days_employed_percentage'] = df['DAYS_EMPLOYED'] / df['DAYS_BIRTH']
+    df['income_credit_percentage'] = df['AMT_INCOME_TOTAL'] / df['AMT_CREDIT']
+    df['income_per_child'] = df['AMT_INCOME_TOTAL'] / (1 + df['CNT_CHILDREN'])
+    df['income_per_person'] = df['AMT_INCOME_TOTAL'] / df['CNT_FAM_MEMBERS']
+    df['payment_rate'] = df['AMT_ANNUITY'] / df['AMT_CREDIT']
+    df['phone_to_birth_ratio'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_BIRTH']
+    df['phone_to_employ_ratio'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_EMPLOYED']
+    df['cnt_non_child'] = df['CNT_FAM_MEMBERS'] - df['CNT_CHILDREN']
+    df['child_to_non_child_ratio'] = df['CNT_CHILDREN'] / df['cnt_non_child']
+    df['income_per_non_child'] = df['AMT_INCOME_TOTAL'] / df['cnt_non_child']
+    df['credit_per_person'] = df['AMT_CREDIT'] / df['CNT_FAM_MEMBERS']
+    df['credit_per_child'] = df['AMT_CREDIT'] / (1 + df['CNT_CHILDREN'])
+    df['credit_per_non_child'] = df['AMT_CREDIT'] / df['cnt_non_child']
 
-    df['app EXT_SOURCE mean'] = df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].mean(axis = 1)
-    df['app EXT_SOURCE std'] = df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].std(axis = 1)
-    df['app EXT_SOURCE std'] = df['app EXT_SOURCE std'].fillna(df['app EXT_SOURCE std'].mean())
-    df['app EXT_SOURCE prod'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
-    df['app EXT_SOURCE_1 * EXT_SOURCE_2'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_2']
-    df['app EXT_SOURCE_1 * EXT_SOURCE_3'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_3']
-    df['app EXT_SOURCE_2 * EXT_SOURCE_3'] = df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
-    df['app EXT_SOURCE_1 * DAYS_EMPLOYED'] = df['EXT_SOURCE_1'] * df['DAYS_EMPLOYED']
-    df['app EXT_SOURCE_2 * DAYS_EMPLOYED'] = df['EXT_SOURCE_2'] * df['DAYS_EMPLOYED']
-    df['app EXT_SOURCE_3 * DAYS_EMPLOYED'] = df['EXT_SOURCE_3'] * df['DAYS_EMPLOYED']
-    df['app EXT_SOURCE_1 / DAYS_BIRTH'] = df['EXT_SOURCE_1'] / df['DAYS_BIRTH']
-    df['app EXT_SOURCE_2 / DAYS_BIRTH'] = df['EXT_SOURCE_2'] / df['DAYS_BIRTH']
-    df['app EXT_SOURCE_3 / DAYS_BIRTH'] = df['EXT_SOURCE_3'] / df['DAYS_BIRTH']
+    # External sources
+    df['external_sources_weighted'] = df.EXT_SOURCE_1 * 2 + df.EXT_SOURCE_2 * 3 + df.EXT_SOURCE_3 * 4
+    for function_name in ['min', 'max', 'sum', 'mean', 'nanmedian']:
+        df['external_sources_{}'.format(function_name)] = eval('np.{}'.format(function_name))(
+            df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']], axis=1)
 
-    df['app AMT_CREDIT - AMT_GOODS_PRICE'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
-    df['app AMT_CREDIT / AMT_GOODS_PRICE'] = df['AMT_CREDIT'] / df['AMT_GOODS_PRICE']
-    df['app AMT_CREDIT / AMT_ANNUITY'] = df['AMT_CREDIT'] / df['AMT_ANNUITY']
-    df['app AMT_CREDIT / AMT_INCOME_TOTAL'] = df['AMT_CREDIT'] / df['AMT_INCOME_TOTAL']
+    AGGREGATION_RECIPIES = [
+        (['CODE_GENDER', 'NAME_EDUCATION_TYPE'], [('AMT_ANNUITY', 'max'),
+                                                  ('AMT_CREDIT', 'max'),
+                                                  ('EXT_SOURCE_1', 'mean'),
+                                                  ('EXT_SOURCE_2', 'mean'),
+                                                  ('OWN_CAR_AGE', 'max'),
+                                                  ('OWN_CAR_AGE', 'sum')]),
+        (['CODE_GENDER', 'ORGANIZATION_TYPE'], [('AMT_ANNUITY', 'mean'),
+                                                ('AMT_INCOME_TOTAL', 'mean'),
+                                                ('DAYS_REGISTRATION', 'mean'),
+                                                ('EXT_SOURCE_1', 'mean')]),
+        (['CODE_GENDER', 'REG_CITY_NOT_WORK_CITY'], [('AMT_ANNUITY', 'mean'),
+                                                     ('CNT_CHILDREN', 'mean'),
+                                                     ('DAYS_ID_PUBLISH', 'mean')]),
+        (['CODE_GENDER', 'NAME_EDUCATION_TYPE', 'OCCUPATION_TYPE', 'REG_CITY_NOT_WORK_CITY'], [('EXT_SOURCE_1', 'mean'),
+                                                                                               ('EXT_SOURCE_2', 'mean')]),
+        (['NAME_EDUCATION_TYPE', 'OCCUPATION_TYPE'], [('AMT_CREDIT', 'mean'),
+                                                      ('AMT_REQ_CREDIT_BUREAU_YEAR', 'mean'),
+                                                      ('APARTMENTS_AVG', 'mean'),
+                                                      ('BASEMENTAREA_AVG', 'mean'),
+                                                      ('EXT_SOURCE_1', 'mean'),
+                                                      ('EXT_SOURCE_2', 'mean'),
+                                                      ('EXT_SOURCE_3', 'mean'),
+                                                      ('NONLIVINGAREA_AVG', 'mean'),
+                                                      ('OWN_CAR_AGE', 'mean'),
+                                                      ('YEARS_BUILD_AVG', 'mean')]),
+        (['NAME_EDUCATION_TYPE', 'OCCUPATION_TYPE', 'REG_CITY_NOT_WORK_CITY'], [('ELEVATORS_AVG', 'mean'),
+                                                                                ('EXT_SOURCE_1', 'mean')]),
+        (['OCCUPATION_TYPE'], [('AMT_ANNUITY', 'mean'),
+                               ('CNT_CHILDREN', 'mean'),
+                               ('CNT_FAM_MEMBERS', 'mean'),
+                               ('DAYS_BIRTH', 'mean'),
+                               ('DAYS_EMPLOYED', 'mean'),
+                               ('DAYS_ID_PUBLISH', 'mean'),
+                               ('DAYS_REGISTRATION', 'mean'),
+                               ('EXT_SOURCE_1', 'mean'),
+                               ('EXT_SOURCE_2', 'mean'),
+                               ('EXT_SOURCE_3', 'mean')]),
+    ]
+    groupby_aggregate_names = []
+    for groupby_cols, specs in tqdm(AGGREGATION_RECIPIES):
+        group_object = df.groupby(groupby_cols)
+        for select, agg in tqdm(specs):
+            groupby_aggregate_name = '{}_{}_{}'.format('_'.join(groupby_cols), agg, select)
+            df = df.merge(group_object[select]
+                                  .agg(agg)
+                                  .reset_index()
+                                  .rename(index=str,
+                                          columns={select: groupby_aggregate_name})
+                                  [groupby_cols + [groupby_aggregate_name]],
+                                  on=groupby_cols,
+                                  how='left')
+            groupby_aggregate_names.append(groupby_aggregate_name)
 
-    df['app AMT_INCOME_TOTAL / 12 - AMT_ANNUITY'] = df['AMT_INCOME_TOTAL'] / 12. - df['AMT_ANNUITY']
-    df['app AMT_INCOME_TOTAL / AMT_ANNUITY'] = df['AMT_INCOME_TOTAL'] / df['AMT_ANNUITY']
-    df['app AMT_INCOME_TOTAL - AMT_GOODS_PRICE'] = df['AMT_INCOME_TOTAL'] - df['AMT_GOODS_PRICE']
-    df['app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS'] = df['AMT_INCOME_TOTAL'] / df['CNT_FAM_MEMBERS']
-    df['app AMT_INCOME_TOTAL / CNT_CHILDREN'] = df['AMT_INCOME_TOTAL'] / (1 + df['CNT_CHILDREN'])
+    diff_feature_names = []
+    for groupby_cols, specs in tqdm(AGGREGATION_RECIPIES):
+        for select, agg in tqdm(specs):
+            if agg in ['mean','median','max','min']:
+                groupby_aggregate_name = '{}_{}_{}'.format('_'.join(groupby_cols), agg, select)
+                diff_name = '{}_diff'.format(groupby_aggregate_name)
+                abs_diff_name = '{}_abs_diff'.format(groupby_aggregate_name)
 
-    df['app most popular AMT_GOODS_PRICE'] = df['AMT_GOODS_PRICE'] \
-                        .isin([225000, 450000, 675000, 900000]).map({True: 1, False: 0})
-    df['app popular AMT_GOODS_PRICE'] = df['AMT_GOODS_PRICE'] \
-                        .isin([1125000, 1350000, 1575000, 1800000, 2250000]).map({True: 1, False: 0})
+                X[diff_name] = X[select] - X[groupby_aggregate_name]
+                X[abs_diff_name] = np.abs(X[select] - X[groupby_aggregate_name])
 
-    df['app OWN_CAR_AGE / DAYS_BIRTH'] = df['OWN_CAR_AGE'] / df['DAYS_BIRTH']
-    df['app OWN_CAR_AGE / DAYS_EMPLOYED'] = df['OWN_CAR_AGE'] / df['DAYS_EMPLOYED']
-
-    df['app DAYS_LAST_PHONE_CHANGE / DAYS_BIRTH'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_BIRTH']
-    df['app DAYS_LAST_PHONE_CHANGE / DAYS_EMPLOYED'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_EMPLOYED']
-    df['app DAYS_EMPLOYED - DAYS_BIRTH'] = df['DAYS_EMPLOYED'] - df['DAYS_BIRTH']
-    df['app DAYS_EMPLOYED / DAYS_BIRTH'] = df['DAYS_EMPLOYED'] / df['DAYS_BIRTH']
-
-    df['app CNT_CHILDREN / CNT_FAM_MEMBERS'] = df['CNT_CHILDREN'] / df['CNT_FAM_MEMBERS']
-
-    # combi_list = [('DAYS_BIRTH', 'NAME_EDUCATION_TYPE'), ('DAYS_BIRTH', 'DAYS_EMPLOYED'), ('CNT_FAM_MEMBERS', 'CODE_GENDER'), ('DAYS_BIRTH', 'FLAG_DOCUMENT_3'), ('DAYS_EMPLOYED', 'ORGANIZATION_TYPE'), ('AMT_INCOME_TOTAL', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('DAYS_EMPLOYED', 'REG_CITY_NOT_WORK_CITY'), ('REG_CITY_NOT_WORK_CITY', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('DAYS_BIRTH', 'NAME_INCOME_TYPE'), ('DAYS_EMPLOYED', 'DAYS_ID_PUBLISH'), ('app AMT_CREDIT / AMT_INCOME_TOTAL', 'app AMT_INCOME_TOTAL / CNT_CHILDREN'), ('DAYS_BIRTH', 'ORGANIZATION_TYPE'), ('DAYS_EMPLOYED', 'NAME_INCOME_TYPE'), ('NAME_EDUCATION_TYPE', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('NAME_INCOME_TYPE', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('ORGANIZATION_TYPE', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('DAYS_ID_PUBLISH', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('CODE_GENDER', 'NAME_FAMILY_STATUS'), ('NAME_INCOME_TYPE', 'ORGANIZATION_TYPE'), ('DAYS_EMPLOYED', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('CODE_GENDER', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('CODE_GENDER', 'FLAG_OWN_CAR'), ('CNT_CHILDREN', 'DAYS_EMPLOYED'), ('DAYS_BIRTH', 'REGION_RATING_CLIENT'), ('DAYS_BIRTH', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('CNT_CHILDREN', 'CODE_GENDER'), ('app DAYS_EMPLOYED / DAYS_BIRTH', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('CODE_GENDER', 'DAYS_EMPLOYED'), ('LIVE_CITY_NOT_WORK_CITY', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('AMT_CREDIT', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('DAYS_EMPLOYED', 'LIVE_CITY_NOT_WORK_CITY'), ('CNT_CHILDREN', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('AMT_CREDIT', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('DAYS_BIRTH', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('AMT_CREDIT', 'FLAG_EMP_PHONE'), ('FLAG_DOCUMENT_3', 'FLAG_EMP_PHONE'), ('FLAG_DOCUMENT_3', 'ORGANIZATION_TYPE'), ('NAME_CONTRACT_TYPE', 'app most popular AMT_GOODS_PRICE'), ('CODE_GENDER', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('AMT_CREDIT', 'DAYS_ID_PUBLISH'), ('NAME_FAMILY_STATUS', 'ORGANIZATION_TYPE'), ('CNT_FAM_MEMBERS', 'app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS'), ('ORGANIZATION_TYPE', 'REGION_RATING_CLIENT'), ('NAME_EDUCATION_TYPE', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('NAME_EDUCATION_TYPE', 'NAME_INCOME_TYPE'), ('FLAG_OWN_CAR', 'REG_CITY_NOT_WORK_CITY'), ('AMT_CREDIT', 'ORGANIZATION_TYPE'), ('FLAG_EMP_PHONE', 'NAME_FAMILY_STATUS'), ('DAYS_BIRTH', 'app most popular AMT_GOODS_PRICE'), ('FLAG_DOCUMENT_3', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('DAYS_EMPLOYED', 'DAYS_REGISTRATION'), ('app AMT_CREDIT / AMT_INCOME_TOTAL', 'app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS'), ('DAYS_REGISTRATION', 'REGION_RATING_CLIENT'), ('CODE_GENDER', 'NAME_EDUCATION_TYPE'), ('DAYS_REGISTRATION', 'NAME_EDUCATION_TYPE'), ('CNT_CHILDREN', 'NAME_EDUCATION_TYPE'), ('FLAG_DOCUMENT_3', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('NAME_FAMILY_STATUS', 'NAME_INCOME_TYPE'), ('FLAG_DOCUMENT_3', 'app most popular AMT_GOODS_PRICE'), ('FLAG_DOCUMENT_3', 'NAME_INCOME_TYPE'), ('app most popular AMT_GOODS_PRICE', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('FLAG_EMP_PHONE', 'NAME_EDUCATION_TYPE'), ('AMT_CREDIT', 'FLAG_DOCUMENT_3'), ('CNT_FAM_MEMBERS', 'DAYS_EMPLOYED'), ('FLAG_EMP_PHONE', 'app most popular AMT_GOODS_PRICE'), ('FLAG_WORK_PHONE', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('AMT_CREDIT', 'NAME_INCOME_TYPE'), ('ORGANIZATION_TYPE', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('DAYS_EMPLOYED', 'FLAG_WORK_PHONE'), ('ORGANIZATION_TYPE', 'app most popular AMT_GOODS_PRICE'), ('AMT_INCOME_TOTAL', 'app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS'), ('NAME_INCOME_TYPE', 'app most popular AMT_GOODS_PRICE'), ('CODE_GENDER', 'NAME_CONTRACT_TYPE'), ('AMT_CREDIT', 'CODE_GENDER'), ('AMT_INCOME_TOTAL', 'DAYS_ID_PUBLISH'), ('AMT_INCOME_TOTAL', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('CNT_FAM_MEMBERS', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('CNT_CHILDREN', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('FLAG_OWN_CAR', 'LIVE_CITY_NOT_WORK_CITY'), ('AMT_CREDIT', 'DAYS_BIRTH'), ('NAME_EDUCATION_TYPE', 'ORGANIZATION_TYPE'), ('DAYS_BIRTH', 'FLAG_OWN_CAR'), ('app DAYS_EMPLOYED - DAYS_BIRTH', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('FLAG_EMP_PHONE', 'REGION_RATING_CLIENT'), ('DAYS_BIRTH', 'app popular AMT_GOODS_PRICE'), ('DAYS_ID_PUBLISH', 'FLAG_OWN_CAR'), ('REGION_RATING_CLIENT', 'REG_CITY_NOT_WORK_CITY'), ('DAYS_BIRTH', 'REGION_POPULATION_RELATIVE'), ('CODE_GENDER', 'FLAG_DOCUMENT_3'), ('FLAG_OWN_CAR', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('REGION_RATING_CLIENT', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('REGION_RATING_CLIENT', 'app missing'), ('DAYS_BIRTH', 'app missing'), ('app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS', 'app AMT_INCOME_TOTAL / CNT_CHILDREN'), ('LIVE_CITY_NOT_WORK_CITY', 'REG_CITY_NOT_WORK_CITY'), ('app popular AMT_GOODS_PRICE', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('NAME_INCOME_TYPE', 'REGION_RATING_CLIENT'), ('ORGANIZATION_TYPE', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('FLAG_EMP_PHONE', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('AMT_INCOME_TOTAL', 'app AMT_INCOME_TOTAL / CNT_CHILDREN'), ('FLAG_OWN_CAR', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('CNT_FAM_MEMBERS', 'NAME_EDUCATION_TYPE'), ('AMT_CREDIT', 'DAYS_REGISTRATION'), ('CODE_GENDER', 'REGION_POPULATION_RELATIVE'), ('DAYS_EMPLOYED', 'REG_CITY_NOT_LIVE_CITY'), ('DAYS_REGISTRATION', 'NAME_INCOME_TYPE'), ('LIVE_CITY_NOT_WORK_CITY', 'REG_CITY_NOT_LIVE_CITY'), ('CNT_CHILDREN', 'FLAG_OWN_CAR'), ('REG_CITY_NOT_WORK_CITY', 'app missing'), ('DAYS_BIRTH', 'HOUR_APPR_PROCESS_START'), ('ORGANIZATION_TYPE', 'REGION_POPULATION_RELATIVE'), ('FLAG_OWN_CAR', 'ORGANIZATION_TYPE'), ('REG_CITY_NOT_LIVE_CITY', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('DAYS_ID_PUBLISH', 'NAME_EDUCATION_TYPE'), ('CODE_GENDER', 'app popular AMT_GOODS_PRICE'), ('DAYS_REGISTRATION', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('NAME_EDUCATION_TYPE', 'REG_CITY_NOT_WORK_CITY'), ('NAME_INCOME_TYPE', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('AMT_INCOME_TOTAL', 'DAYS_REGISTRATION'), ('ORGANIZATION_TYPE', 'app popular AMT_GOODS_PRICE'), ('REGION_RATING_CLIENT', 'REG_CITY_NOT_LIVE_CITY'), ('NAME_EDUCATION_TYPE', 'NAME_HOUSING_TYPE'), ('AMT_CREDIT', 'AMT_INCOME_TOTAL'), ('NAME_EDUCATION_TYPE', 'NAME_FAMILY_STATUS'), ('DAYS_REGISTRATION', 'app missing'), ('DAYS_ID_PUBLISH', 'app most popular AMT_GOODS_PRICE'), ('AMT_INCOME_TOTAL', 'REG_CITY_NOT_WORK_CITY'), ('CNT_FAM_MEMBERS', 'app AMT_INCOME_TOTAL / CNT_CHILDREN'), ('DAYS_REGISTRATION', 'ORGANIZATION_TYPE'), ('NAME_INCOME_TYPE', 'app popular AMT_GOODS_PRICE'), ('FLAG_DOCUMENT_8', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('AMT_CREDIT', 'FLAG_WORK_PHONE'), ('AMT_CREDIT', 'FLAG_DOCUMENT_6'), ('AMT_CREDIT', 'NAME_CONTRACT_TYPE'), ('DAYS_REGISTRATION', 'FLAG_EMP_PHONE'), ('app missing', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('FLAG_EMP_PHONE', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('DAYS_ID_PUBLISH', 'REGION_RATING_CLIENT'), ('FLAG_OWN_CAR', 'FLAG_WORK_PHONE'), ('DAYS_ID_PUBLISH', 'app popular AMT_GOODS_PRICE'), ('FLAG_EMP_PHONE', 'app popular AMT_GOODS_PRICE'), ('NAME_EDUCATION_TYPE', 'REG_CITY_NOT_LIVE_CITY'), ('AMT_INCOME_TOTAL', 'app EXT_SOURCE std'), ('FLAG_DOCUMENT_6', 'NAME_FAMILY_STATUS'), ('CNT_FAM_MEMBERS', 'FLAG_OWN_CAR'), ('AMT_INCOME_TOTAL', 'CODE_GENDER'), ('AMT_INCOME_TOTAL', 'DAYS_BIRTH'), ('AMT_CREDIT', 'REG_CITY_NOT_WORK_CITY'), ('REGION_RATING_CLIENT', 'app EXT_SOURCE std'), ('FLAG_DOCUMENT_6', 'NAME_EDUCATION_TYPE'), ('NAME_EDUCATION_TYPE', 'REGION_RATING_CLIENT'), ('REGION_POPULATION_RELATIVE', 'REG_CITY_NOT_WORK_CITY'), ('DAYS_EMPLOYED', 'NAME_FAMILY_STATUS'), ('FLAG_DOCUMENT_8', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('NAME_HOUSING_TYPE', 'REGION_RATING_CLIENT'), ('DAYS_ID_PUBLISH', 'app AMT_INCOME_TOTAL / CNT_CHILDREN'), ('FLAG_DOCUMENT_3', 'REGION_RATING_CLIENT'), ('REGION_POPULATION_RELATIVE', 'app missing'), ('CODE_GENDER', 'REGION_RATING_CLIENT'), ('app AMT_INCOME_TOTAL / CNT_CHILDREN', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('REG_CITY_NOT_LIVE_CITY', 'app missing'), ('app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('FLAG_EMP_PHONE', 'app missing'), ('FLAG_EMP_PHONE', 'REGION_POPULATION_RELATIVE'), ('DAYS_EMPLOYED', 'REG_REGION_NOT_WORK_REGION'), ('CNT_FAM_MEMBERS', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('NAME_FAMILY_STATUS', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('DAYS_REGISTRATION', 'FLAG_DOCUMENT_3'), ('DAYS_BIRTH', 'FLAG_DOCUMENT_8'), ('CNT_FAM_MEMBERS', 'REG_REGION_NOT_WORK_REGION'), ('AMT_INCOME_TOTAL', 'FLAG_OWN_REALTY'), ('FLAG_WORK_PHONE', 'NAME_EDUCATION_TYPE'), ('FLAG_WORK_PHONE', 'REG_CITY_NOT_WORK_CITY'), ('FLAG_DOCUMENT_6', 'app most popular AMT_GOODS_PRICE'), ('AMT_INCOME_TOTAL', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('DAYS_EMPLOYED', 'FLAG_DOCUMENT_3'), ('HOUR_APPR_PROCESS_START', 'ORGANIZATION_TYPE'), ('FLAG_DOCUMENT_6', 'REGION_RATING_CLIENT'), ('DAYS_REGISTRATION', 'app popular AMT_GOODS_PRICE'), ('REG_REGION_NOT_WORK_REGION', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('FLAG_DOCUMENT_6', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('DAYS_EMPLOYED', 'REGION_RATING_CLIENT'), ('DAYS_BIRTH', 'app AMT_INCOME_TOTAL / CNT_CHILDREN'), ('NAME_INCOME_TYPE', 'app missing'), ('FLAG_DOCUMENT_3', 'NAME_HOUSING_TYPE'), ('CNT_CHILDREN', 'REG_REGION_NOT_WORK_REGION'), ('NAME_EDUCATION_TYPE', 'app popular AMT_GOODS_PRICE'), ('CNT_FAM_MEMBERS', 'LIVE_REGION_NOT_WORK_REGION'), ('AMT_INCOME_TOTAL', 'REG_CITY_NOT_LIVE_CITY'), ('FLAG_DOCUMENT_3', 'REG_CITY_NOT_LIVE_CITY'), ('FLAG_DOCUMENT_3', 'REG_CITY_NOT_WORK_CITY'), ('REG_REGION_NOT_WORK_REGION', 'app DAYS_EMPLOYED / DAYS_BIRTH')]
+                diff_feature_names.append(diff_name)
+                diff_feature_names.append(abs_diff_name)
+    # df['app EXT_SOURCE mean'] = df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].mean(axis = 1)
+    # df['app EXT_SOURCE std'] = df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].std(axis = 1)
+    # df['app EXT_SOURCE std'] = df['app EXT_SOURCE std'].fillna(df['app EXT_SOURCE std'].mean())
+    # df['app EXT_SOURCE prod'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
+    # df['app EXT_SOURCE_1 * EXT_SOURCE_2'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_2']
+    # df['app EXT_SOURCE_1 * EXT_SOURCE_3'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_3']
+    # df['app EXT_SOURCE_2 * EXT_SOURCE_3'] = df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
+    # df['app EXT_SOURCE_1 * DAYS_EMPLOYED'] = df['EXT_SOURCE_1'] * df['DAYS_EMPLOYED']
+    # df['app EXT_SOURCE_2 * DAYS_EMPLOYED'] = df['EXT_SOURCE_2'] * df['DAYS_EMPLOYED']
+    # df['app EXT_SOURCE_3 * DAYS_EMPLOYED'] = df['EXT_SOURCE_3'] * df['DAYS_EMPLOYED']
+    # df['app EXT_SOURCE_1 / DAYS_BIRTH'] = df['EXT_SOURCE_1'] / df['DAYS_BIRTH']
+    # df['app EXT_SOURCE_2 / DAYS_BIRTH'] = df['EXT_SOURCE_2'] / df['DAYS_BIRTH']
+    # df['app EXT_SOURCE_3 / DAYS_BIRTH'] = df['EXT_SOURCE_3'] / df['DAYS_BIRTH']
     #
-    # for i in combi_list:
-    #     df[str(i)] = df[i[0]] * df[i[1]]
+    # df['app AMT_CREDIT - AMT_GOODS_PRICE'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
+    # df['app AMT_CREDIT / AMT_GOODS_PRICE'] = df['AMT_CREDIT'] / df['AMT_GOODS_PRICE']
+    # df['app AMT_CREDIT / AMT_ANNUITY'] = df['AMT_CREDIT'] / df['AMT_ANNUITY']
+    # df['app AMT_CREDIT / AMT_INCOME_TOTAL'] = df['AMT_CREDIT'] / df['AMT_INCOME_TOTAL']
+    #
+    # df['app AMT_INCOME_TOTAL / 12 - AMT_ANNUITY'] = df['AMT_INCOME_TOTAL'] / 12. - df['AMT_ANNUITY']
+    # df['app AMT_INCOME_TOTAL / AMT_ANNUITY'] = df['AMT_INCOME_TOTAL'] / df['AMT_ANNUITY']
+    # df['app AMT_INCOME_TOTAL - AMT_GOODS_PRICE'] = df['AMT_INCOME_TOTAL'] - df['AMT_GOODS_PRICE']
+    # df['app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS'] = df['AMT_INCOME_TOTAL'] / df['CNT_FAM_MEMBERS']
+    # df['app AMT_INCOME_TOTAL / CNT_CHILDREN'] = df['AMT_INCOME_TOTAL'] / (1 + df['CNT_CHILDREN'])
+    #
+    # df['app most popular AMT_GOODS_PRICE'] = df['AMT_GOODS_PRICE'] \
+    #                     .isin([225000, 450000, 675000, 900000]).map({True: 1, False: 0})
+    # df['app popular AMT_GOODS_PRICE'] = df['AMT_GOODS_PRICE'] \
+    #                     .isin([1125000, 1350000, 1575000, 1800000, 2250000]).map({True: 1, False: 0})
+    #
+    # df['app OWN_CAR_AGE / DAYS_BIRTH'] = df['OWN_CAR_AGE'] / df['DAYS_BIRTH']
+    # df['app OWN_CAR_AGE / DAYS_EMPLOYED'] = df['OWN_CAR_AGE'] / df['DAYS_EMPLOYED']
+    #
+    # df['app DAYS_LAST_PHONE_CHANGE / DAYS_BIRTH'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_BIRTH']
+    # df['app DAYS_LAST_PHONE_CHANGE / DAYS_EMPLOYED'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_EMPLOYED']
+    # df['app DAYS_EMPLOYED - DAYS_BIRTH'] = df['DAYS_EMPLOYED'] - df['DAYS_BIRTH']
+    # df['app DAYS_EMPLOYED / DAYS_BIRTH'] = df['DAYS_EMPLOYED'] / df['DAYS_BIRTH']
+    #
+    # df['app CNT_CHILDREN / CNT_FAM_MEMBERS'] = df['CNT_CHILDREN'] / df['CNT_FAM_MEMBERS']
 
     return reduce_mem_usage(df)
 
@@ -231,13 +307,13 @@ def bureau_and_balance(file_path = file_path, nan_as_category = True):
     df_bureau = reduce_mem_usage(pd.read_csv(file_path + 'bureau.csv'), verbose = False)
 
     # Replace\remove some outliers in bureau set
-    # df_bureau.loc[df_bureau['AMT_ANNUITY'] > .8e8, 'AMT_ANNUITY'] = np.nan
-    # df_bureau.loc[df_bureau['AMT_CREDIT_SUM'] > 3e8, 'AMT_CREDIT_SUM'] = np.nan
-    # df_bureau.loc[df_bureau['AMT_CREDIT_SUM_DEBT'] > 1e8, 'AMT_CREDIT_SUM_DEBT'] = np.nan
-    # df_bureau.loc[df_bureau['AMT_CREDIT_MAX_OVERDUE'] > .8e8, 'AMT_CREDIT_MAX_OVERDUE'] = np.nan
-    df_bureau.loc[df_bureau['DAYS_ENDDATE_FACT'] < -10000, 'DAYS_ENDDATE_FACT'] = np.nan
-    # df_bureau.loc[(df_bureau['DAYS_CREDIT_UPDATE'] > 0) | (df_bureau['DAYS_CREDIT_UPDATE'] < -40000), 'DAYS_CREDIT_UPDATE'] = np.nan
-    df_bureau.loc[df_bureau['DAYS_CREDIT_ENDDATE'] < -10000, 'DAYS_CREDIT_ENDDATE'] = np.nan
+    df_bureau.loc[df_bureau['AMT_ANNUITY'] > .8e8, 'AMT_ANNUITY'] = np.nan
+    df_bureau.loc[df_bureau['AMT_CREDIT_SUM'] > 3e8, 'AMT_CREDIT_SUM'] = np.nan
+    df_bureau.loc[df_bureau['AMT_CREDIT_SUM_DEBT'] > 1e8, 'AMT_CREDIT_SUM_DEBT'] = np.nan
+    df_bureau.loc[df_bureau['AMT_CREDIT_MAX_OVERDUE'] > .8e8, 'AMT_CREDIT_MAX_OVERDUE'] = np.nan
+    df_bureau.loc[df_bureau['DAYS_ENDDATE_FACT'] < -40000, 'DAYS_ENDDATE_FACT'] = np.nan
+    df_bureau.loc[(df_bureau['DAYS_CREDIT_UPDATE'] > 0) | (df_bureau['DAYS_CREDIT_UPDATE'] < -40000), 'DAYS_CREDIT_UPDATE'] = np.nan
+    df_bureau.loc[df_bureau['DAYS_CREDIT_ENDDATE'] < -40000, 'DAYS_CREDIT_ENDDATE'] = np.nan
 
     df_bureau.drop(df_bureau[df_bureau['DAYS_ENDDATE_FACT'] < df_bureau['DAYS_CREDIT']].index, inplace = True)
 
@@ -290,10 +366,10 @@ def previous_application(file_path = file_path, nan_as_category = True):
     df_prev = pd.read_csv(file_path + 'previous_application.csv')
 
     # Replace some outliers
-    # df_prev.loc[df_prev['AMT_CREDIT'] > 6000000, 'AMT_CREDIT'] = np.nan
-    # df_prev.loc[df_prev['SELLERPLACE_AREA'] > 3500000, 'SELLERPLACE_AREA'] = np.nan
+    df_prev.loc[df_prev['AMT_CREDIT'] > 6000000, 'AMT_CREDIT'] = np.nan
+    df_prev.loc[df_prev['SELLERPLACE_AREA'] > 3500000, 'SELLERPLACE_AREA'] = np.nan
     df_prev[['DAYS_FIRST_DRAWING', 'DAYS_FIRST_DUE', 'DAYS_LAST_DUE_1ST_VERSION',
-             'DAYS_LAST_DUE', 'DAYS_TERMINATION']].replace(365243, 0, inplace = True)
+             'DAYS_LAST_DUE', 'DAYS_TERMINATION']].replace(365243, np.nan, inplace = True)
 
     # Some new features
     df_prev['prev missing'] = df_prev.isnull().sum(axis = 1).values
@@ -335,7 +411,7 @@ def pos_cash(file_path = file_path, nan_as_category = True):
     df_pos = pd.read_csv(file_path + 'POS_CASH_balance.csv')
 
     # Replace some outliers
-    # df_pos.loc[df_pos['CNT_INSTALMENT_FUTURE'] > 60, 'CNT_INSTALMENT_FUTURE'] = np.nan
+    df_pos.loc[df_pos['CNT_INSTALMENT_FUTURE'] > 60, 'CNT_INSTALMENT_FUTURE'] = np.nan
 
     # Some new features
     df_pos['pos CNT_INSTALMENT more CNT_INSTALMENT_FUTURE'] = \
@@ -363,8 +439,8 @@ def installments_payments(file_path = file_path, nan_as_category = True):
     df_ins = pd.read_csv(file_path + 'installments_payments.csv')
 
     # Replace some outliers
-    # df_ins.loc[df_ins['NUM_INSTALMENT_VERSION'] > 70, 'NUM_INSTALMENT_VERSION'] = np.nan
-    # df_ins.loc[df_ins['DAYS_ENTRY_PAYMENT'] < -4000, 'DAYS_ENTRY_PAYMENT'] = np.nan
+    df_ins.loc[df_ins['NUM_INSTALMENT_VERSION'] > 70, 'NUM_INSTALMENT_VERSION'] = np.nan
+    df_ins.loc[df_ins['DAYS_ENTRY_PAYMENT'] < -4000, 'DAYS_ENTRY_PAYMENT'] = np.nan
 
     # Some new features
     df_ins['ins DAYS_ENTRY_PAYMENT - DAYS_INSTALMENT'] = df_ins['DAYS_ENTRY_PAYMENT'] - df_ins['DAYS_INSTALMENT']
@@ -395,8 +471,10 @@ def credit_card_balance(file_path = file_path, nan_as_category = True):
     df_card = pd.read_csv(file_path + 'credit_card_balance.csv')
 
     # Replace some outliers
-    # df_card.loc[df_card['AMT_PAYMENT_CURRENT'] > 4000000, 'AMT_PAYMENT_CURRENT'] = np.nan
-    # df_card.loc[df_card['AMT_CREDIT_LIMIT_ACTUAL'] > 1000000, 'AMT_CREDIT_LIMIT_ACTUAL'] = np.nan
+    df_card.loc[df_card['AMT_PAYMENT_CURRENT'] > 4000000, 'AMT_PAYMENT_CURRENT'] = np.nan
+    df_card.loc[df_card['AMT_CREDIT_LIMIT_ACTUAL'] > 1000000, 'AMT_CREDIT_LIMIT_ACTUAL'] = np.nan
+    df_card.loc[df_card['AMT_DRAWINGS_ATM_CURRENT'] < 0, 'AMT_DRAWINGS_ATM_CURRENT'] = np.nan
+    df_card.loc[df_card['AMT_DRAWINGS_CURRENT'] < 0, 'AMT_DRAWINGS_CURRENT'] = np.nan
 
     # Some new features
     df_card['card missing'] = df_card.isnull().sum(axis = 1).values
@@ -496,40 +574,6 @@ def aggregate(file_path = file_path):
 
 df = aggregate()
 
-def get_epistasis(df):
-    print("start find epistasis")
-    range_list = list(itertools.combinations(df.loc[:, ~df.isnull().any()].columns, 2))
-    train = df[df['TARGET'].notnull()]
-    result = []
-    for i in tqdm(range_list):
-        try:
-            pheno = np.array(train["TARGET"])
-            gene = np.array(train[[i[0], i[1]]])
-            gene = np.column_stack((np.ones((gene.shape[0], 1)), gene))
-            a = regression_analyze(gene, pheno)
-            train['tmp'] = train[i[0]] * train[i[1]]
-            gene = np.array(train[[i[0], i[1], 'tmp']])
-            gene = np.column_stack((np.ones((gene.shape[0], 1)), gene))
-            # print(train.shape)
-            # train.loc[:, ~train.isnull().any()]
-            b = regression_analyze(gene, pheno)
-
-            result.append([f_test(a, b, train.shape[0]), i])
-        except:
-            pass
-    result = pd.DataFrame(sorted(result), columns=["p", "combi"])
-    result = result.dropna(how='all')
-    result = result[result["p"] < 0.05 / len(range_list)]
-    if result.shape[0] > 300:
-        result = result[0:300]
-    combi_list = list(result["combi"])
-    for i in combi_list:
-        df[str(i)] = df[i[0]] * df[i[1]]
-
-    return df
-
-df = get_epistasis(df)
-
 def corr_feature_with_target(feature, target):
     c0 = feature[target == 0].dropna()
     c1 = feature[target == 1].dropna()
@@ -584,7 +628,7 @@ def clean_data(data):
     data.drop(to_del, axis = 1, inplace = True)
     print('After removing features with the same distribution on 0 and 1 classes there are {0:d} features'.format(data.shape[1]))
 
-    # Removing features with not the same distribution on train and test datasets
+    # # Removing features with not the same distribution on train and test datasets
     # corr_test = pd.DataFrame(index = ['diff', 'p'])
     # target = data['TARGET'].notnull().astype(int)
     #
@@ -608,17 +652,13 @@ def clean_data(data):
     train_index = data[data['TARGET'].notnull()].index
     train_columns = data.drop('TARGET', axis = 1).columns
 
-    folds = KFold(n_splits = 5, shuffle = True, random_state = 1024)
     new_columns = []
-    for n_fold, (train_idx, valid_idx) in enumerate(folds.split(train_index)):
-        clf.fit(data.loc[train_index[train_idx], train_columns], data.loc[train_index[train_idx], 'TARGET'])
-        f_imp = pd.Series(clf.feature_importances_, index = train_columns)
-        f_imp.to_csv("{}st_features_imp.csv".format(n_fold))
-        new_columns.append(list(f_imp[f_imp > 0].index))
+    clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
+    f_imp = pd.Series(clf.feature_importances_, index = train_columns)
+    new_columns = f_imp[f_imp > 1].index
+    train_columns = train_columns.drop(new_columns)
 
-    new_columns = list(set(new_columns[0]) & set(new_columns[1]) & set(new_columns[2]) & set(new_columns[3]) & set(new_columns[4]))
-    pd.Series(new_columns).to_csv("result_features.csv")
-    data = data[['TARGET','SK_ID_CURR']+ new_columns]
+    data.drop(train_columns, axis = 1, inplace = True)
     print('After removing features not interesting for classifier there are {0:d} features'.format(data.shape[1]))
 
     # for i in range(10):
@@ -788,7 +828,7 @@ feature_importance, scor = cv_scores(df, 5, lgbm_params, test_prediction_file_na
 #           'min_split_gain': (.01, .03),
 #           'min_child_weight': (34, 50)}
 # bo = BayesianOptimization(lgbm_evaluate, params)
-# bo.maximize(init_points = 5, n_iter = 40)
+# bo.maximize(init_points = 5, n_iter = 50)
 # best_params = bo.res['max']['max_params']
 # best_params['num_leaves'] = int(best_params['num_leaves'])
 # best_params['max_depth'] = int(best_params['max_depth'])
