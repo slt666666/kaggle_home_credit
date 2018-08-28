@@ -244,7 +244,7 @@ def bureau_and_balance(file_path = file_path, nan_as_category = True):
     merge_df = pd.merge(df_bureau_sub, df_train)
     for i in list(bureau_cat.index):
         cate = merge_df[["TARGET", i]].groupby(i).mean()
-        df_bureau[["TARGET", i]] = df_bureau[["TARGET", i]].replace(cate['TARGET'].to_dict())
+        df_bureau[i] = df_bureau[i].replace(cate['TARGET'].to_dict())
 
     del df_bureau_sub, merge_df, df_train
     gc.collect()
@@ -337,6 +337,16 @@ def pos_cash(file_path = file_path, nan_as_category = True):
 
     # Categorical features with One-Hot encode
     df_pos, categorical = one_hot_encoder(df_pos, nan_as_category)
+    # categorical = df_pos.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
+    # df_pos_sub = df_pos[["SK_ID_CURR"] + list(categorical.index)]
+    #
+    # df_train = pd.read_csv(file_path + 'application_train.csv')
+    # df_train = df_train[["SK_ID_CURR", "TARGET"]]
+    #
+    # merge_df = pd.merge(df_pos, df)
+    # for i in list(categorical.index):
+    #     cate = merge_df[["TARGET", i]].groupby(i).mean()
+    #     df_bureau[["TARGET", i]] = df_bureau[["TARGET", i]].replace(cate['TARGET'].to_dict())
 
     # Aggregations for application set
     aggregations = {}
