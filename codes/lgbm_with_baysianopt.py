@@ -153,6 +153,11 @@ def application_train_test(file_path = file_path, nan_as_category = True):
 
     df['app CNT_CHILDREN / CNT_FAM_MEMBERS'] = df['CNT_CHILDREN'] / df['CNT_FAM_MEMBERS']
 
+    combi_list = [('DAYS_BIRTH', 'NAME_EDUCATION_TYPE'), ('DAYS_BIRTH', 'DAYS_EMPLOYED'), ('CNT_FAM_MEMBERS', 'CODE_GENDER'), ('DAYS_BIRTH', 'FLAG_DOCUMENT_3'), ('DAYS_EMPLOYED', 'ORGANIZATION_TYPE'), ('AMT_INCOME_TOTAL', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('DAYS_EMPLOYED', 'REG_CITY_NOT_WORK_CITY'), ('REG_CITY_NOT_WORK_CITY', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('DAYS_BIRTH', 'NAME_INCOME_TYPE'), ('DAYS_EMPLOYED', 'DAYS_ID_PUBLISH'), ('app AMT_CREDIT / AMT_INCOME_TOTAL', 'app AMT_INCOME_TOTAL / CNT_CHILDREN'), ('DAYS_BIRTH', 'ORGANIZATION_TYPE'), ('DAYS_EMPLOYED', 'NAME_INCOME_TYPE'), ('NAME_EDUCATION_TYPE', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('NAME_INCOME_TYPE', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('ORGANIZATION_TYPE', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('DAYS_ID_PUBLISH', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('CODE_GENDER', 'NAME_FAMILY_STATUS'), ('NAME_INCOME_TYPE', 'ORGANIZATION_TYPE'), ('DAYS_EMPLOYED', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('CODE_GENDER', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('CODE_GENDER', 'FLAG_OWN_CAR'), ('CNT_CHILDREN', 'DAYS_EMPLOYED'), ('DAYS_BIRTH', 'REGION_RATING_CLIENT'), ('DAYS_BIRTH', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('CNT_CHILDREN', 'CODE_GENDER'), ('app DAYS_EMPLOYED / DAYS_BIRTH', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('CODE_GENDER', 'DAYS_EMPLOYED'), ('LIVE_CITY_NOT_WORK_CITY', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('AMT_CREDIT', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('DAYS_EMPLOYED', 'LIVE_CITY_NOT_WORK_CITY'), ('CNT_CHILDREN', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('AMT_CREDIT', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('DAYS_BIRTH', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('AMT_CREDIT', 'FLAG_EMP_PHONE'), ('FLAG_DOCUMENT_3', 'FLAG_EMP_PHONE'), ('FLAG_DOCUMENT_3', 'ORGANIZATION_TYPE'), ('NAME_CONTRACT_TYPE', 'app most popular AMT_GOODS_PRICE'), ('CODE_GENDER', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('AMT_CREDIT', 'DAYS_ID_PUBLISH'), ('NAME_FAMILY_STATUS', 'ORGANIZATION_TYPE'), ('CNT_FAM_MEMBERS', 'app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS'), ('ORGANIZATION_TYPE', 'REGION_RATING_CLIENT'), ('NAME_EDUCATION_TYPE', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('NAME_EDUCATION_TYPE', 'NAME_INCOME_TYPE'), ('FLAG_OWN_CAR', 'REG_CITY_NOT_WORK_CITY'), ('AMT_CREDIT', 'ORGANIZATION_TYPE'), ('FLAG_EMP_PHONE', 'NAME_FAMILY_STATUS'), ('DAYS_BIRTH', 'app most popular AMT_GOODS_PRICE'), ('FLAG_DOCUMENT_3', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('DAYS_EMPLOYED', 'DAYS_REGISTRATION'), ('app AMT_CREDIT / AMT_INCOME_TOTAL', 'app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS'), ('DAYS_REGISTRATION', 'REGION_RATING_CLIENT'), ('CODE_GENDER', 'NAME_EDUCATION_TYPE'), ('DAYS_REGISTRATION', 'NAME_EDUCATION_TYPE'), ('CNT_CHILDREN', 'NAME_EDUCATION_TYPE'), ('FLAG_DOCUMENT_3', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('NAME_FAMILY_STATUS', 'NAME_INCOME_TYPE'), ('FLAG_DOCUMENT_3', 'app most popular AMT_GOODS_PRICE'), ('FLAG_DOCUMENT_3', 'NAME_INCOME_TYPE'), ('app most popular AMT_GOODS_PRICE', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('FLAG_EMP_PHONE', 'NAME_EDUCATION_TYPE'), ('AMT_CREDIT', 'FLAG_DOCUMENT_3'), ('CNT_FAM_MEMBERS', 'DAYS_EMPLOYED'), ('FLAG_EMP_PHONE', 'app most popular AMT_GOODS_PRICE'), ('FLAG_WORK_PHONE', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('AMT_CREDIT', 'NAME_INCOME_TYPE'), ('ORGANIZATION_TYPE', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('DAYS_EMPLOYED', 'FLAG_WORK_PHONE'), ('ORGANIZATION_TYPE', 'app most popular AMT_GOODS_PRICE'), ('AMT_INCOME_TOTAL', 'app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS'), ('NAME_INCOME_TYPE', 'app most popular AMT_GOODS_PRICE'), ('CODE_GENDER', 'NAME_CONTRACT_TYPE'), ('AMT_CREDIT', 'CODE_GENDER'), ('AMT_INCOME_TOTAL', 'DAYS_ID_PUBLISH'), ('AMT_INCOME_TOTAL', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('CNT_FAM_MEMBERS', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('CNT_CHILDREN', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('FLAG_OWN_CAR', 'LIVE_CITY_NOT_WORK_CITY'), ('AMT_CREDIT', 'DAYS_BIRTH'), ('NAME_EDUCATION_TYPE', 'ORGANIZATION_TYPE'), ('DAYS_BIRTH', 'FLAG_OWN_CAR'), ('app DAYS_EMPLOYED - DAYS_BIRTH', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('FLAG_EMP_PHONE', 'REGION_RATING_CLIENT'), ('DAYS_BIRTH', 'app popular AMT_GOODS_PRICE'), ('DAYS_ID_PUBLISH', 'FLAG_OWN_CAR'), ('REGION_RATING_CLIENT', 'REG_CITY_NOT_WORK_CITY'), ('DAYS_BIRTH', 'REGION_POPULATION_RELATIVE'), ('CODE_GENDER', 'FLAG_DOCUMENT_3'), ('FLAG_OWN_CAR', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('REGION_RATING_CLIENT', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('REGION_RATING_CLIENT', 'app missing'), ('DAYS_BIRTH', 'app missing'), ('app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS', 'app AMT_INCOME_TOTAL / CNT_CHILDREN'), ('LIVE_CITY_NOT_WORK_CITY', 'REG_CITY_NOT_WORK_CITY'), ('app popular AMT_GOODS_PRICE', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('NAME_INCOME_TYPE', 'REGION_RATING_CLIENT'), ('ORGANIZATION_TYPE', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('FLAG_EMP_PHONE', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('AMT_INCOME_TOTAL', 'app AMT_INCOME_TOTAL / CNT_CHILDREN'), ('FLAG_OWN_CAR', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('CNT_FAM_MEMBERS', 'NAME_EDUCATION_TYPE'), ('AMT_CREDIT', 'DAYS_REGISTRATION'), ('CODE_GENDER', 'REGION_POPULATION_RELATIVE'), ('DAYS_EMPLOYED', 'REG_CITY_NOT_LIVE_CITY'), ('DAYS_REGISTRATION', 'NAME_INCOME_TYPE'), ('LIVE_CITY_NOT_WORK_CITY', 'REG_CITY_NOT_LIVE_CITY'), ('CNT_CHILDREN', 'FLAG_OWN_CAR'), ('REG_CITY_NOT_WORK_CITY', 'app missing'), ('DAYS_BIRTH', 'HOUR_APPR_PROCESS_START'), ('ORGANIZATION_TYPE', 'REGION_POPULATION_RELATIVE'), ('FLAG_OWN_CAR', 'ORGANIZATION_TYPE'), ('REG_CITY_NOT_LIVE_CITY', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('DAYS_ID_PUBLISH', 'NAME_EDUCATION_TYPE'), ('CODE_GENDER', 'app popular AMT_GOODS_PRICE'), ('DAYS_REGISTRATION', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('NAME_EDUCATION_TYPE', 'REG_CITY_NOT_WORK_CITY'), ('NAME_INCOME_TYPE', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('AMT_INCOME_TOTAL', 'DAYS_REGISTRATION'), ('ORGANIZATION_TYPE', 'app popular AMT_GOODS_PRICE'), ('REGION_RATING_CLIENT', 'REG_CITY_NOT_LIVE_CITY'), ('NAME_EDUCATION_TYPE', 'NAME_HOUSING_TYPE'), ('AMT_CREDIT', 'AMT_INCOME_TOTAL'), ('NAME_EDUCATION_TYPE', 'NAME_FAMILY_STATUS'), ('DAYS_REGISTRATION', 'app missing'), ('DAYS_ID_PUBLISH', 'app most popular AMT_GOODS_PRICE'), ('AMT_INCOME_TOTAL', 'REG_CITY_NOT_WORK_CITY'), ('CNT_FAM_MEMBERS', 'app AMT_INCOME_TOTAL / CNT_CHILDREN'), ('DAYS_REGISTRATION', 'ORGANIZATION_TYPE'), ('NAME_INCOME_TYPE', 'app popular AMT_GOODS_PRICE'), ('FLAG_DOCUMENT_8', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('AMT_CREDIT', 'FLAG_WORK_PHONE'), ('AMT_CREDIT', 'FLAG_DOCUMENT_6'), ('AMT_CREDIT', 'NAME_CONTRACT_TYPE'), ('DAYS_REGISTRATION', 'FLAG_EMP_PHONE'), ('app missing', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('FLAG_EMP_PHONE', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('DAYS_ID_PUBLISH', 'REGION_RATING_CLIENT'), ('FLAG_OWN_CAR', 'FLAG_WORK_PHONE'), ('DAYS_ID_PUBLISH', 'app popular AMT_GOODS_PRICE'), ('FLAG_EMP_PHONE', 'app popular AMT_GOODS_PRICE'), ('NAME_EDUCATION_TYPE', 'REG_CITY_NOT_LIVE_CITY'), ('AMT_INCOME_TOTAL', 'app EXT_SOURCE std'), ('FLAG_DOCUMENT_6', 'NAME_FAMILY_STATUS'), ('CNT_FAM_MEMBERS', 'FLAG_OWN_CAR'), ('AMT_INCOME_TOTAL', 'CODE_GENDER'), ('AMT_INCOME_TOTAL', 'DAYS_BIRTH'), ('AMT_CREDIT', 'REG_CITY_NOT_WORK_CITY'), ('REGION_RATING_CLIENT', 'app EXT_SOURCE std'), ('FLAG_DOCUMENT_6', 'NAME_EDUCATION_TYPE'), ('NAME_EDUCATION_TYPE', 'REGION_RATING_CLIENT'), ('REGION_POPULATION_RELATIVE', 'REG_CITY_NOT_WORK_CITY'), ('DAYS_EMPLOYED', 'NAME_FAMILY_STATUS'), ('FLAG_DOCUMENT_8', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('NAME_HOUSING_TYPE', 'REGION_RATING_CLIENT'), ('DAYS_ID_PUBLISH', 'app AMT_INCOME_TOTAL / CNT_CHILDREN'), ('FLAG_DOCUMENT_3', 'REGION_RATING_CLIENT'), ('REGION_POPULATION_RELATIVE', 'app missing'), ('CODE_GENDER', 'REGION_RATING_CLIENT'), ('app AMT_INCOME_TOTAL / CNT_CHILDREN', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('REG_CITY_NOT_LIVE_CITY', 'app missing'), ('app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('FLAG_EMP_PHONE', 'app missing'), ('FLAG_EMP_PHONE', 'REGION_POPULATION_RELATIVE'), ('DAYS_EMPLOYED', 'REG_REGION_NOT_WORK_REGION'), ('CNT_FAM_MEMBERS', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('NAME_FAMILY_STATUS', 'app DAYS_EMPLOYED - DAYS_BIRTH'), ('DAYS_REGISTRATION', 'FLAG_DOCUMENT_3'), ('DAYS_BIRTH', 'FLAG_DOCUMENT_8'), ('CNT_FAM_MEMBERS', 'REG_REGION_NOT_WORK_REGION'), ('AMT_INCOME_TOTAL', 'FLAG_OWN_REALTY'), ('FLAG_WORK_PHONE', 'NAME_EDUCATION_TYPE'), ('FLAG_WORK_PHONE', 'REG_CITY_NOT_WORK_CITY'), ('FLAG_DOCUMENT_6', 'app most popular AMT_GOODS_PRICE'), ('AMT_INCOME_TOTAL', 'app DAYS_EMPLOYED / DAYS_BIRTH'), ('DAYS_EMPLOYED', 'FLAG_DOCUMENT_3'), ('HOUR_APPR_PROCESS_START', 'ORGANIZATION_TYPE'), ('FLAG_DOCUMENT_6', 'REGION_RATING_CLIENT'), ('DAYS_REGISTRATION', 'app popular AMT_GOODS_PRICE'), ('REG_REGION_NOT_WORK_REGION', 'app CNT_CHILDREN / CNT_FAM_MEMBERS'), ('FLAG_DOCUMENT_6', 'app AMT_CREDIT / AMT_INCOME_TOTAL'), ('DAYS_EMPLOYED', 'REGION_RATING_CLIENT'), ('DAYS_BIRTH', 'app AMT_INCOME_TOTAL / CNT_CHILDREN'), ('NAME_INCOME_TYPE', 'app missing'), ('FLAG_DOCUMENT_3', 'NAME_HOUSING_TYPE'), ('CNT_CHILDREN', 'REG_REGION_NOT_WORK_REGION'), ('NAME_EDUCATION_TYPE', 'app popular AMT_GOODS_PRICE'), ('CNT_FAM_MEMBERS', 'LIVE_REGION_NOT_WORK_REGION'), ('AMT_INCOME_TOTAL', 'REG_CITY_NOT_LIVE_CITY'), ('FLAG_DOCUMENT_3', 'REG_CITY_NOT_LIVE_CITY'), ('FLAG_DOCUMENT_3', 'REG_CITY_NOT_WORK_CITY'), ('REG_REGION_NOT_WORK_REGION', 'app DAYS_EMPLOYED / DAYS_BIRTH')]
+
+    for i in combi_list:
+        df[str(combi_list[0])] = train[combi_list[0][0]] * train[combi_list[0][1]]
+
     return reduce_mem_usage(df)
 
 
@@ -232,22 +237,8 @@ def bureau_and_balance(file_path = file_path, nan_as_category = True):
     df_bureau['bureau DAYS_CREDIT_ENDDATE - DAYS_ENDDATE_FACT'] = df_bureau['DAYS_CREDIT_ENDDATE'] - df_bureau['DAYS_ENDDATE_FACT']
     df_bureau['bureau DAYS_CREDIT_UPDATE - DAYS_CREDIT_ENDDATE'] = df_bureau['DAYS_CREDIT_UPDATE'] - df_bureau['DAYS_CREDIT_ENDDATE']
 
-    # # Categorical features with One-Hot encode
-    # df_bureau, bureau_cat = one_hot_encoder(df_bureau, nan_as_category)
-
-    bureau_cat = df_bureau.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
-    df_bureau_sub = df_bureau[["SK_ID_CURR"] + list(bureau_cat.index)]
-
-    df_train = pd.read_csv(file_path + 'application_train.csv')
-    df_train = df_train[["SK_ID_CURR", "TARGET"]]
-
-    merge_df = pd.merge(df_bureau_sub, df_train)
-    for i in list(bureau_cat.index):
-        cate = merge_df[["TARGET", i]].groupby(i).mean()
-        df_bureau[i] = df_bureau[i].replace(cate['TARGET'].to_dict())
-
-    del df_bureau_sub, merge_df, df_train
-    gc.collect()
+    # Categorical features with One-Hot encode
+    df_bureau, bureau_cat = one_hot_encoder(df_bureau, nan_as_category)
 
     # Bureau balance: merge with bureau.csv
     df_bureau = df_bureau.join(df_bureau_b_agg, how = 'left', on = 'SK_ID_BUREAU')
@@ -256,26 +247,26 @@ def bureau_and_balance(file_path = file_path, nan_as_category = True):
     gc.collect()
 
     # Bureau and bureau_balance aggregations for application set
-    categorical = list(bureau_cat.index) + bureau_b_cat
+    categorical = bureau_cat + bureau_b_cat
     aggregations = {}
     for col in df_bureau.columns:
         aggregations[col] = ['mean'] if col in categorical else ['min', 'max', 'size', 'mean', 'var', 'sum']
     df_bureau_agg = df_bureau.groupby('SK_ID_CURR').agg(aggregations)
     df_bureau_agg.columns = pd.Index(['BURO_' + e[0] + "_" + e[1].upper() for e in df_bureau_agg.columns.tolist()])
 
-    # # Bureau: Active credits
-    # active_agg = df_bureau[df_bureau['CREDIT_ACTIVE_Active'] == 1].groupby('SK_ID_CURR').agg(aggregations)
-    # active_agg.columns = pd.Index(['ACTIVE_' + e[0] + "_" + e[1].upper() for e in active_agg.columns.tolist()])
-    # df_bureau_agg = df_bureau_agg.join(active_agg, how = 'left')
-    # del active_agg
-    # gc.collect()
-    #
-    # # Bureau: Closed credits
-    # closed_agg = df_bureau[df_bureau['CREDIT_ACTIVE_Closed'] == 1].groupby('SK_ID_CURR').agg(aggregations)
-    # closed_agg.columns = pd.Index(['CLOSED_' + e[0] + "_" + e[1].upper() for e in closed_agg.columns.tolist()])
-    # df_bureau_agg = df_bureau_agg.join(closed_agg, how = 'left')
-    # del closed_agg, df_bureau
-    # gc.collect()
+    # Bureau: Active credits
+    active_agg = df_bureau[df_bureau['CREDIT_ACTIVE_Active'] == 1].groupby('SK_ID_CURR').agg(aggregations)
+    active_agg.columns = pd.Index(['ACTIVE_' + e[0] + "_" + e[1].upper() for e in active_agg.columns.tolist()])
+    df_bureau_agg = df_bureau_agg.join(active_agg, how = 'left')
+    del active_agg
+    gc.collect()
+
+    # Bureau: Closed credits
+    closed_agg = df_bureau[df_bureau['CREDIT_ACTIVE_Closed'] == 1].groupby('SK_ID_CURR').agg(aggregations)
+    closed_agg.columns = pd.Index(['CLOSED_' + e[0] + "_" + e[1].upper() for e in closed_agg.columns.tolist()])
+    df_bureau_agg = df_bureau_agg.join(closed_agg, how = 'left')
+    del closed_agg, df_bureau
+    gc.collect()
 
     return reduce_mem_usage(df_bureau_agg)
 
@@ -335,21 +326,8 @@ def pos_cash(file_path = file_path, nan_as_category = True):
     df_pos['pos CNT_INSTALMENT more CNT_INSTALMENT_FUTURE'] = \
                     (df_pos['CNT_INSTALMENT'] > df_pos['CNT_INSTALMENT_FUTURE']).astype(int)
 
-    # # Categorical features with One-Hot encode
+    # Categorical features with One-Hot encode
     df_pos, categorical = one_hot_encoder(df_pos, nan_as_category)
-    # categorical = df_pos.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
-    # df_pos_sub = df_pos[["SK_ID_CURR"] + list(categorical.index)]
-    #
-    # df_train = pd.read_csv(file_path + 'application_train.csv')
-    # df_train = df_train[["SK_ID_CURR", "TARGET"]]
-    #
-    # merge_df = pd.merge(df_pos_sub, df_train)
-    # for i in list(categorical.index):
-    #     cate = merge_df[["TARGET", i]].groupby(i).mean()
-    #     df_pos[i] = df_pos[i].replace(cate['TARGET'].to_dict())
-    #
-    # del df_pos_sub, merge_df, df_train
-    # gc.collect()
 
     # Aggregations for application set
     aggregations = {}
@@ -579,7 +557,7 @@ def clean_data(data):
     # Removing features not interesting for classifier
     clf = LGBMClassifier(random_state = 0)
     train_index = data[data['TARGET'].notnull()].index
-    train_columns = data.drop(['TARGET', 'SK_ID_CURR'], axis = 1).columns
+    train_columns = data.drop('TARGET', axis = 1).columns
 
     new_columns = []
     clf.fit(data.loc[train_index, train_columns], data.loc[train_index, 'TARGET'])
