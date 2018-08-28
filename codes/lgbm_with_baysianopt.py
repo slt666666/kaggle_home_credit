@@ -263,19 +263,19 @@ def bureau_and_balance(file_path = file_path, nan_as_category = True):
     df_bureau_agg = df_bureau.groupby('SK_ID_CURR').agg(aggregations)
     df_bureau_agg.columns = pd.Index(['BURO_' + e[0] + "_" + e[1].upper() for e in df_bureau_agg.columns.tolist()])
 
-    # Bureau: Active credits
-    active_agg = df_bureau[df_bureau['CREDIT_ACTIVE_Active'] == 1].groupby('SK_ID_CURR').agg(aggregations)
-    active_agg.columns = pd.Index(['ACTIVE_' + e[0] + "_" + e[1].upper() for e in active_agg.columns.tolist()])
-    df_bureau_agg = df_bureau_agg.join(active_agg, how = 'left')
-    del active_agg
-    gc.collect()
-
-    # Bureau: Closed credits
-    closed_agg = df_bureau[df_bureau['CREDIT_ACTIVE_Closed'] == 1].groupby('SK_ID_CURR').agg(aggregations)
-    closed_agg.columns = pd.Index(['CLOSED_' + e[0] + "_" + e[1].upper() for e in closed_agg.columns.tolist()])
-    df_bureau_agg = df_bureau_agg.join(closed_agg, how = 'left')
-    del closed_agg, df_bureau
-    gc.collect()
+    # # Bureau: Active credits
+    # active_agg = df_bureau[df_bureau['CREDIT_ACTIVE_Active'] == 1].groupby('SK_ID_CURR').agg(aggregations)
+    # active_agg.columns = pd.Index(['ACTIVE_' + e[0] + "_" + e[1].upper() for e in active_agg.columns.tolist()])
+    # df_bureau_agg = df_bureau_agg.join(active_agg, how = 'left')
+    # del active_agg
+    # gc.collect()
+    #
+    # # Bureau: Closed credits
+    # closed_agg = df_bureau[df_bureau['CREDIT_ACTIVE_Closed'] == 1].groupby('SK_ID_CURR').agg(aggregations)
+    # closed_agg.columns = pd.Index(['CLOSED_' + e[0] + "_" + e[1].upper() for e in closed_agg.columns.tolist()])
+    # df_bureau_agg = df_bureau_agg.join(closed_agg, how = 'left')
+    # del closed_agg, df_bureau
+    # gc.collect()
 
     return reduce_mem_usage(df_bureau_agg)
 
@@ -335,7 +335,7 @@ def pos_cash(file_path = file_path, nan_as_category = True):
     df_pos['pos CNT_INSTALMENT more CNT_INSTALMENT_FUTURE'] = \
                     (df_pos['CNT_INSTALMENT'] > df_pos['CNT_INSTALMENT_FUTURE']).astype(int)
 
-    # Categorical features with One-Hot encode
+    # # Categorical features with One-Hot encode
     df_pos, categorical = one_hot_encoder(df_pos, nan_as_category)
     # categorical = df_pos.select_dtypes(include=['object']).apply(pd.Series.nunique, axis = 0)
     # df_pos_sub = df_pos[["SK_ID_CURR"] + list(categorical.index)]
@@ -343,10 +343,13 @@ def pos_cash(file_path = file_path, nan_as_category = True):
     # df_train = pd.read_csv(file_path + 'application_train.csv')
     # df_train = df_train[["SK_ID_CURR", "TARGET"]]
     #
-    # merge_df = pd.merge(df_pos, df)
+    # merge_df = pd.merge(df_pos_sub, df_train)
     # for i in list(categorical.index):
     #     cate = merge_df[["TARGET", i]].groupby(i).mean()
-    #     df_bureau[["TARGET", i]] = df_bureau[["TARGET", i]].replace(cate['TARGET'].to_dict())
+    #     df_pos[i] = df_pos[i].replace(cate['TARGET'].to_dict())
+    #
+    # del df_pos_sub, merge_df, df_train
+    # gc.collect()
 
     # Aggregations for application set
     aggregations = {}
