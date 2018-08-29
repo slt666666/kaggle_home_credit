@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 # import matplotlib.pyplot as plt
 # import seaborn as sns
-from tqdm import tqdm
 import gc
 import time
 import warnings
@@ -103,9 +102,7 @@ def application_train_test(file_path = file_path, nan_as_category = True):
     df.loc[df['AMT_INCOME_TOTAL'] > 1e8, 'AMT_INCOME_TOTAL'] = np.nan
     df.loc[df['AMT_REQ_CREDIT_BUREAU_QRT'] > 10, 'AMT_REQ_CREDIT_BUREAU_QRT'] = np.nan
     df.loc[df['OBS_30_CNT_SOCIAL_CIRCLE'] > 40, 'OBS_30_CNT_SOCIAL_CIRCLE'] = np.nan
-    df['DAYS_LAST_PHONE_CHANGE'].replace(0, np.nan, inplace=True)
-    df['long_employment'] = (df['DAYS_EMPLOYED'] < -2000).astype(int)
-    df['retirement_age'] = (df['DAYS_BIRTH'] < -14000).astype(int)
+    
     # # Categorical features with Binary encode (0 or 1; two categories)
     # for bin_feature in ['CODE_GENDER', 'FLAG_OWN_CAR', 'FLAG_OWN_REALTY']:
     #     df[bin_feature], _ = pd.factorize(df[bin_feature])
@@ -115,139 +112,46 @@ def application_train_test(file_path = file_path, nan_as_category = True):
 
     # Some new features
     df['app missing'] = df.isnull().sum(axis = 1).values
-    df['annuity_income_percentage'] = df['AMT_ANNUITY'] / df['AMT_INCOME_TOTAL']
-    df['car_to_birth_ratio'] = df['OWN_CAR_AGE'] / df['DAYS_BIRTH']
-    df['car_to_employ_ratio'] = df['OWN_CAR_AGE'] / df['DAYS_EMPLOYED']
-    df['children_ratio'] = df['CNT_CHILDREN'] / df['CNT_FAM_MEMBERS']
-    df['credit_to_annuity_ratio'] = df['AMT_CREDIT'] / df['AMT_ANNUITY']
-    df['credit_to_goods_ratio'] = df['AMT_CREDIT'] / df['AMT_GOODS_PRICE']
-    df['credit_to_income_ratio'] = df['AMT_CREDIT'] / df['AMT_INCOME_TOTAL']
-    df['days_employed_percentage'] = df['DAYS_EMPLOYED'] / df['DAYS_BIRTH']
-    df['income_credit_percentage'] = df['AMT_INCOME_TOTAL'] / df['AMT_CREDIT']
-    df['income_per_child'] = df['AMT_INCOME_TOTAL'] / (1 + df['CNT_CHILDREN'])
-    df['income_per_person'] = df['AMT_INCOME_TOTAL'] / df['CNT_FAM_MEMBERS']
-    df['payment_rate'] = df['AMT_ANNUITY'] / df['AMT_CREDIT']
-    df['phone_to_birth_ratio'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_BIRTH']
-    df['phone_to_employ_ratio'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_EMPLOYED']
-    df['cnt_non_child'] = df['CNT_FAM_MEMBERS'] - df['CNT_CHILDREN']
-    df['child_to_non_child_ratio'] = df['CNT_CHILDREN'] / df['cnt_non_child']
-    df['income_per_non_child'] = df['AMT_INCOME_TOTAL'] / df['cnt_non_child']
-    df['credit_per_person'] = df['AMT_CREDIT'] / df['CNT_FAM_MEMBERS']
-    df['credit_per_child'] = df['AMT_CREDIT'] / (1 + df['CNT_CHILDREN'])
-    df['credit_per_non_child'] = df['AMT_CREDIT'] / df['cnt_non_child']
 
-    # External sources
-    df['external_sources_weighted'] = df.EXT_SOURCE_1 * 2 + df.EXT_SOURCE_2 * 3 + df.EXT_SOURCE_3 * 4
-    for function_name in ['min', 'max', 'sum', 'mean', 'nanmedian']:
-        df['external_sources_{}'.format(function_name)] = eval('np.{}'.format(function_name))(
-            df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']], axis=1)
+    df['app EXT_SOURCE mean'] = df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].mean(axis = 1)
+    df['app EXT_SOURCE std'] = df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].std(axis = 1)
+    df['app EXT_SOURCE std'] = df['app EXT_SOURCE std'].fillna(df['app EXT_SOURCE std'].mean())
+    df['app EXT_SOURCE prod'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
+    df['app EXT_SOURCE_1 * EXT_SOURCE_2'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_2']
+    df['app EXT_SOURCE_1 * EXT_SOURCE_3'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_3']
+    df['app EXT_SOURCE_2 * EXT_SOURCE_3'] = df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
+    df['app EXT_SOURCE_1 * DAYS_EMPLOYED'] = df['EXT_SOURCE_1'] * df['DAYS_EMPLOYED']
+    df['app EXT_SOURCE_2 * DAYS_EMPLOYED'] = df['EXT_SOURCE_2'] * df['DAYS_EMPLOYED']
+    df['app EXT_SOURCE_3 * DAYS_EMPLOYED'] = df['EXT_SOURCE_3'] * df['DAYS_EMPLOYED']
+    df['app EXT_SOURCE_1 / DAYS_BIRTH'] = df['EXT_SOURCE_1'] / df['DAYS_BIRTH']
+    df['app EXT_SOURCE_2 / DAYS_BIRTH'] = df['EXT_SOURCE_2'] / df['DAYS_BIRTH']
+    df['app EXT_SOURCE_3 / DAYS_BIRTH'] = df['EXT_SOURCE_3'] / df['DAYS_BIRTH']
 
-    AGGREGATION_RECIPIES = [
-        (['CODE_GENDER', 'NAME_EDUCATION_TYPE'], [('AMT_ANNUITY', 'max'),
-                                                  ('AMT_CREDIT', 'max'),
-                                                  ('EXT_SOURCE_1', 'mean'),
-                                                  ('EXT_SOURCE_2', 'mean'),
-                                                  ('OWN_CAR_AGE', 'max'),
-                                                  ('OWN_CAR_AGE', 'sum')]),
-        (['CODE_GENDER', 'ORGANIZATION_TYPE'], [('AMT_ANNUITY', 'mean'),
-                                                ('AMT_INCOME_TOTAL', 'mean'),
-                                                ('DAYS_REGISTRATION', 'mean'),
-                                                ('EXT_SOURCE_1', 'mean')]),
-        (['CODE_GENDER', 'REG_CITY_NOT_WORK_CITY'], [('AMT_ANNUITY', 'mean'),
-                                                     ('CNT_CHILDREN', 'mean'),
-                                                     ('DAYS_ID_PUBLISH', 'mean')]),
-        (['CODE_GENDER', 'NAME_EDUCATION_TYPE', 'OCCUPATION_TYPE', 'REG_CITY_NOT_WORK_CITY'], [('EXT_SOURCE_1', 'mean'),
-                                                                                               ('EXT_SOURCE_2', 'mean')]),
-        (['NAME_EDUCATION_TYPE', 'OCCUPATION_TYPE'], [('AMT_CREDIT', 'mean'),
-                                                      ('AMT_REQ_CREDIT_BUREAU_YEAR', 'mean'),
-                                                      ('APARTMENTS_AVG', 'mean'),
-                                                      ('BASEMENTAREA_AVG', 'mean'),
-                                                      ('EXT_SOURCE_1', 'mean'),
-                                                      ('EXT_SOURCE_2', 'mean'),
-                                                      ('EXT_SOURCE_3', 'mean'),
-                                                      ('NONLIVINGAREA_AVG', 'mean'),
-                                                      ('OWN_CAR_AGE', 'mean'),
-                                                      ('YEARS_BUILD_AVG', 'mean')]),
-        (['NAME_EDUCATION_TYPE', 'OCCUPATION_TYPE', 'REG_CITY_NOT_WORK_CITY'], [('ELEVATORS_AVG', 'mean'),
-                                                                                ('EXT_SOURCE_1', 'mean')]),
-        (['OCCUPATION_TYPE'], [('AMT_ANNUITY', 'mean'),
-                               ('CNT_CHILDREN', 'mean'),
-                               ('CNT_FAM_MEMBERS', 'mean'),
-                               ('DAYS_BIRTH', 'mean'),
-                               ('DAYS_EMPLOYED', 'mean'),
-                               ('DAYS_ID_PUBLISH', 'mean'),
-                               ('DAYS_REGISTRATION', 'mean'),
-                               ('EXT_SOURCE_1', 'mean'),
-                               ('EXT_SOURCE_2', 'mean'),
-                               ('EXT_SOURCE_3', 'mean')]),
-    ]
-    groupby_aggregate_names = []
-    for groupby_cols, specs in tqdm(AGGREGATION_RECIPIES):
-        group_object = df.groupby(groupby_cols)
-        for select, agg in tqdm(specs):
-            groupby_aggregate_name = '{}_{}_{}'.format('_'.join(groupby_cols), agg, select)
-            df = df.merge(group_object[select]
-                                  .agg(agg)
-                                  .reset_index()
-                                  .rename(index=str,
-                                          columns={select: groupby_aggregate_name})
-                                  [groupby_cols + [groupby_aggregate_name]],
-                                  on=groupby_cols,
-                                  how='left')
-            groupby_aggregate_names.append(groupby_aggregate_name)
+    df['app AMT_CREDIT - AMT_GOODS_PRICE'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
+    df['app AMT_CREDIT / AMT_GOODS_PRICE'] = df['AMT_CREDIT'] / df['AMT_GOODS_PRICE']
+    df['app AMT_CREDIT / AMT_ANNUITY'] = df['AMT_CREDIT'] / df['AMT_ANNUITY']
+    df['app AMT_CREDIT / AMT_INCOME_TOTAL'] = df['AMT_CREDIT'] / df['AMT_INCOME_TOTAL']
 
-    diff_feature_names = []
-    for groupby_cols, specs in tqdm(AGGREGATION_RECIPIES):
-        for select, agg in tqdm(specs):
-            if agg in ['mean','median','max','min']:
-                groupby_aggregate_name = '{}_{}_{}'.format('_'.join(groupby_cols), agg, select)
-                diff_name = '{}_diff'.format(groupby_aggregate_name)
-                abs_diff_name = '{}_abs_diff'.format(groupby_aggregate_name)
+    df['app AMT_INCOME_TOTAL / 12 - AMT_ANNUITY'] = df['AMT_INCOME_TOTAL'] / 12. - df['AMT_ANNUITY']
+    df['app AMT_INCOME_TOTAL / AMT_ANNUITY'] = df['AMT_INCOME_TOTAL'] / df['AMT_ANNUITY']
+    df['app AMT_INCOME_TOTAL - AMT_GOODS_PRICE'] = df['AMT_INCOME_TOTAL'] - df['AMT_GOODS_PRICE']
+    df['app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS'] = df['AMT_INCOME_TOTAL'] / df['CNT_FAM_MEMBERS']
+    df['app AMT_INCOME_TOTAL / CNT_CHILDREN'] = df['AMT_INCOME_TOTAL'] / (1 + df['CNT_CHILDREN'])
 
-                X[diff_name] = X[select] - X[groupby_aggregate_name]
-                X[abs_diff_name] = np.abs(X[select] - X[groupby_aggregate_name])
+    df['app most popular AMT_GOODS_PRICE'] = df['AMT_GOODS_PRICE'] \
+                        .isin([225000, 450000, 675000, 900000]).map({True: 1, False: 0})
+    df['app popular AMT_GOODS_PRICE'] = df['AMT_GOODS_PRICE'] \
+                        .isin([1125000, 1350000, 1575000, 1800000, 2250000]).map({True: 1, False: 0})
 
-                diff_feature_names.append(diff_name)
-                diff_feature_names.append(abs_diff_name)
-    # df['app EXT_SOURCE mean'] = df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].mean(axis = 1)
-    # df['app EXT_SOURCE std'] = df[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].std(axis = 1)
-    # df['app EXT_SOURCE std'] = df['app EXT_SOURCE std'].fillna(df['app EXT_SOURCE std'].mean())
-    # df['app EXT_SOURCE prod'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
-    # df['app EXT_SOURCE_1 * EXT_SOURCE_2'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_2']
-    # df['app EXT_SOURCE_1 * EXT_SOURCE_3'] = df['EXT_SOURCE_1'] * df['EXT_SOURCE_3']
-    # df['app EXT_SOURCE_2 * EXT_SOURCE_3'] = df['EXT_SOURCE_2'] * df['EXT_SOURCE_3']
-    # df['app EXT_SOURCE_1 * DAYS_EMPLOYED'] = df['EXT_SOURCE_1'] * df['DAYS_EMPLOYED']
-    # df['app EXT_SOURCE_2 * DAYS_EMPLOYED'] = df['EXT_SOURCE_2'] * df['DAYS_EMPLOYED']
-    # df['app EXT_SOURCE_3 * DAYS_EMPLOYED'] = df['EXT_SOURCE_3'] * df['DAYS_EMPLOYED']
-    # df['app EXT_SOURCE_1 / DAYS_BIRTH'] = df['EXT_SOURCE_1'] / df['DAYS_BIRTH']
-    # df['app EXT_SOURCE_2 / DAYS_BIRTH'] = df['EXT_SOURCE_2'] / df['DAYS_BIRTH']
-    # df['app EXT_SOURCE_3 / DAYS_BIRTH'] = df['EXT_SOURCE_3'] / df['DAYS_BIRTH']
-    #
-    # df['app AMT_CREDIT - AMT_GOODS_PRICE'] = df['AMT_CREDIT'] - df['AMT_GOODS_PRICE']
-    # df['app AMT_CREDIT / AMT_GOODS_PRICE'] = df['AMT_CREDIT'] / df['AMT_GOODS_PRICE']
-    # df['app AMT_CREDIT / AMT_ANNUITY'] = df['AMT_CREDIT'] / df['AMT_ANNUITY']
-    # df['app AMT_CREDIT / AMT_INCOME_TOTAL'] = df['AMT_CREDIT'] / df['AMT_INCOME_TOTAL']
-    #
-    # df['app AMT_INCOME_TOTAL / 12 - AMT_ANNUITY'] = df['AMT_INCOME_TOTAL'] / 12. - df['AMT_ANNUITY']
-    # df['app AMT_INCOME_TOTAL / AMT_ANNUITY'] = df['AMT_INCOME_TOTAL'] / df['AMT_ANNUITY']
-    # df['app AMT_INCOME_TOTAL - AMT_GOODS_PRICE'] = df['AMT_INCOME_TOTAL'] - df['AMT_GOODS_PRICE']
-    # df['app AMT_INCOME_TOTAL / CNT_FAM_MEMBERS'] = df['AMT_INCOME_TOTAL'] / df['CNT_FAM_MEMBERS']
-    # df['app AMT_INCOME_TOTAL / CNT_CHILDREN'] = df['AMT_INCOME_TOTAL'] / (1 + df['CNT_CHILDREN'])
-    #
-    # df['app most popular AMT_GOODS_PRICE'] = df['AMT_GOODS_PRICE'] \
-    #                     .isin([225000, 450000, 675000, 900000]).map({True: 1, False: 0})
-    # df['app popular AMT_GOODS_PRICE'] = df['AMT_GOODS_PRICE'] \
-    #                     .isin([1125000, 1350000, 1575000, 1800000, 2250000]).map({True: 1, False: 0})
-    #
-    # df['app OWN_CAR_AGE / DAYS_BIRTH'] = df['OWN_CAR_AGE'] / df['DAYS_BIRTH']
-    # df['app OWN_CAR_AGE / DAYS_EMPLOYED'] = df['OWN_CAR_AGE'] / df['DAYS_EMPLOYED']
-    #
-    # df['app DAYS_LAST_PHONE_CHANGE / DAYS_BIRTH'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_BIRTH']
-    # df['app DAYS_LAST_PHONE_CHANGE / DAYS_EMPLOYED'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_EMPLOYED']
-    # df['app DAYS_EMPLOYED - DAYS_BIRTH'] = df['DAYS_EMPLOYED'] - df['DAYS_BIRTH']
-    # df['app DAYS_EMPLOYED / DAYS_BIRTH'] = df['DAYS_EMPLOYED'] / df['DAYS_BIRTH']
-    #
-    # df['app CNT_CHILDREN / CNT_FAM_MEMBERS'] = df['CNT_CHILDREN'] / df['CNT_FAM_MEMBERS']
+    df['app OWN_CAR_AGE / DAYS_BIRTH'] = df['OWN_CAR_AGE'] / df['DAYS_BIRTH']
+    df['app OWN_CAR_AGE / DAYS_EMPLOYED'] = df['OWN_CAR_AGE'] / df['DAYS_EMPLOYED']
+
+    df['app DAYS_LAST_PHONE_CHANGE / DAYS_BIRTH'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_BIRTH']
+    df['app DAYS_LAST_PHONE_CHANGE / DAYS_EMPLOYED'] = df['DAYS_LAST_PHONE_CHANGE'] / df['DAYS_EMPLOYED']
+    df['app DAYS_EMPLOYED - DAYS_BIRTH'] = df['DAYS_EMPLOYED'] - df['DAYS_BIRTH']
+    df['app DAYS_EMPLOYED / DAYS_BIRTH'] = df['DAYS_EMPLOYED'] / df['DAYS_BIRTH']
+
+    df['app CNT_CHILDREN / CNT_FAM_MEMBERS'] = df['CNT_CHILDREN'] / df['CNT_FAM_MEMBERS']
 
     return reduce_mem_usage(df)
 
@@ -311,9 +215,9 @@ def bureau_and_balance(file_path = file_path, nan_as_category = True):
     df_bureau.loc[df_bureau['AMT_CREDIT_SUM'] > 3e8, 'AMT_CREDIT_SUM'] = np.nan
     df_bureau.loc[df_bureau['AMT_CREDIT_SUM_DEBT'] > 1e8, 'AMT_CREDIT_SUM_DEBT'] = np.nan
     df_bureau.loc[df_bureau['AMT_CREDIT_MAX_OVERDUE'] > .8e8, 'AMT_CREDIT_MAX_OVERDUE'] = np.nan
-    df_bureau.loc[df_bureau['DAYS_ENDDATE_FACT'] < -40000, 'DAYS_ENDDATE_FACT'] = np.nan
+    df_bureau.loc[df_bureau['DAYS_ENDDATE_FACT'] < -10000, 'DAYS_ENDDATE_FACT'] = np.nan
     df_bureau.loc[(df_bureau['DAYS_CREDIT_UPDATE'] > 0) | (df_bureau['DAYS_CREDIT_UPDATE'] < -40000), 'DAYS_CREDIT_UPDATE'] = np.nan
-    df_bureau.loc[df_bureau['DAYS_CREDIT_ENDDATE'] < -40000, 'DAYS_CREDIT_ENDDATE'] = np.nan
+    df_bureau.loc[df_bureau['DAYS_CREDIT_ENDDATE'] < -10000, 'DAYS_CREDIT_ENDDATE'] = np.nan
 
     df_bureau.drop(df_bureau[df_bureau['DAYS_ENDDATE_FACT'] < df_bureau['DAYS_CREDIT']].index, inplace = True)
 
@@ -473,8 +377,6 @@ def credit_card_balance(file_path = file_path, nan_as_category = True):
     # Replace some outliers
     df_card.loc[df_card['AMT_PAYMENT_CURRENT'] > 4000000, 'AMT_PAYMENT_CURRENT'] = np.nan
     df_card.loc[df_card['AMT_CREDIT_LIMIT_ACTUAL'] > 1000000, 'AMT_CREDIT_LIMIT_ACTUAL'] = np.nan
-    df_card.loc[df_card['AMT_DRAWINGS_ATM_CURRENT'] < 0, 'AMT_DRAWINGS_ATM_CURRENT'] = np.nan
-    df_card.loc[df_card['AMT_DRAWINGS_CURRENT'] < 0, 'AMT_DRAWINGS_CURRENT'] = np.nan
 
     # Some new features
     df_card['card missing'] = df_card.isnull().sum(axis = 1).values
